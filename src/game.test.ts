@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Game, CLUES } from "./game";
+import { Game, CLUES, splitEvenly } from "./game";
 function fixture(
   width: number,
   height: number,
@@ -116,4 +116,136 @@ test("exports visible state in CSV or tab text and exposes loss mines with wrong
   assert.equal(game.export("text").split("\n")[0], "?\t?\tF−1");
   game.reveal(0, 2000);
   assert.equal(game.export("csv"), "M+1,?,XF−1\n?,√2,?\n?,?,M−i");
+});
+
+// Reference boards produced by Zig 0.14.1 running the native game.zig.
+test("native seeded random and custom generation produce identical typed boards and initial flood", () => {
+  {
+    const game = new Game({ width: 9, height: 9, mines: 10 }, 0);
+    game.reveal(0, 1000);
+    assert.equal(game.seed, 1);
+    assert.deepEqual(
+      game.mine.flatMap((type, index) => (type ? [[index, type]] : [])),
+      [
+        [11, 3],
+        [26, 2],
+        [38, 4],
+        [40, 3],
+        [41, 1],
+        [53, 1],
+        [56, 3],
+        [58, 2],
+        [61, 2],
+        [78, 4],
+      ],
+    );
+    assert.deepEqual(
+      game.open.flatMap((opened, index) => (opened ? [index] : [])),
+      [
+        0, 1, 9, 10, 18, 19, 27, 28, 36, 37, 45, 46, 54, 55, 63, 64, 65, 66, 67,
+        68, 72, 73, 74, 75, 76, 77,
+      ],
+    );
+  }
+  {
+    const game = new Game({ width: 16, height: 16, mines: 40 }, 4045620583);
+    game.reveal(136, 1000);
+    assert.equal(game.seed, 4045620583);
+    assert.deepEqual(
+      game.mine.flatMap((type, index) => (type ? [[index, type]] : [])),
+      [
+        [4, 4],
+        [6, 2],
+        [10, 2],
+        [33, 4],
+        [36, 2],
+        [40, 2],
+        [51, 2],
+        [57, 4],
+        [60, 1],
+        [63, 4],
+        [64, 3],
+        [66, 2],
+        [74, 1],
+        [75, 4],
+        [76, 4],
+        [77, 4],
+        [81, 1],
+        [88, 3],
+        [90, 3],
+        [96, 2],
+        [112, 3],
+        [114, 2],
+        [123, 3],
+        [133, 2],
+        [139, 2],
+        [143, 3],
+        [144, 1],
+        [149, 1],
+        [154, 2],
+        [160, 2],
+        [162, 4],
+        [168, 3],
+        [173, 1],
+        [219, 4],
+        [222, 4],
+        [233, 3],
+        [242, 1],
+        [246, 3],
+        [251, 2],
+        [252, 3],
+      ],
+    );
+    assert.deepEqual(
+      game.open.flatMap((opened, index) => (opened ? [index] : [])),
+      [
+        21, 22, 23, 37, 38, 39, 52, 53, 54, 55, 67, 68, 69, 70, 71, 83, 84, 85,
+        86, 87, 99, 100, 101, 102, 103, 104, 105, 106, 115, 116, 117, 118, 119,
+        120, 121, 122, 134, 135, 136, 137, 138, 150, 151, 152, 153,
+      ],
+    );
+  }
+  {
+    const game = new Game(
+      { width: 12, height: 12, mines: 14, counts: [0, 7, 0, 7] },
+      123456789,
+    );
+    game.reveal(143, 1000);
+    assert.equal(game.seed, 123456789);
+    assert.deepEqual(
+      game.mine.flatMap((type, index) => (type ? [[index, type]] : [])),
+      [
+        [4, 2],
+        [7, 4],
+        [39, 4],
+        [43, 4],
+        [45, 4],
+        [53, 4],
+        [58, 2],
+        [59, 2],
+        [78, 2],
+        [81, 4],
+        [90, 2],
+        [94, 2],
+        [112, 4],
+        [114, 2],
+      ],
+    );
+    assert.deepEqual(
+      game.open.flatMap((opened, index) => (opened ? [index] : [])),
+      [
+        0, 1, 2, 3, 12, 13, 14, 15, 24, 25, 26, 27, 36, 37, 38, 48, 49, 50, 51,
+        52, 60, 61, 62, 63, 64, 65, 72, 73, 74, 75, 76, 77, 84, 85, 86, 87, 88,
+        89, 91, 92, 93, 96, 97, 98, 99, 100, 101, 103, 104, 105, 106, 107, 108,
+        109, 110, 111, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125,
+        126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
+        140, 141, 142, 143,
+      ],
+    );
+  }
+});
+
+test("native custom prefill splits remainder into the earliest types", () => {
+  assert.deepEqual(splitEvenly(10), [3, 3, 2, 2]);
+  assert.deepEqual(splitEvenly(99), [25, 25, 25, 24]);
 });

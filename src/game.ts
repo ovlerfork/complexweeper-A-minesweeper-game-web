@@ -30,6 +30,13 @@ export const PRESETS = [
   { width: 16, height: 16, mines: 40, label: "中级 · 16×16 · 40 雷" },
   { width: 30, height: 16, mines: 99, label: "高级 · 30×16 · 99 雷" },
 ];
+export function splitEvenly(total: number): number[] {
+  return Array.from(
+    { length: 4 },
+    (_, i) => Math.floor(total / 4) + (i < total % 4 ? 1 : 0),
+  );
+}
+
 export interface Config {
   width: number;
   height: number;
@@ -63,7 +70,8 @@ export class Game {
     public seed = crypto.getRandomValues(new Uint32Array(1))[0] || 1,
   ) {
     this.config = { ...config, counts: config.counts?.slice() };
-    this.randomState = seed || 1;
+    this.seed = seed || 1;
+    this.randomState = this.seed;
     const n = config.width * config.height;
     this.mine = Array(n).fill(0);
     this.clue = Array(n).fill(-1);
@@ -161,13 +169,14 @@ export class Game {
       this.generate(cell);
       this.started = true;
       this.startedAt = now;
+      this.moves = 0;
     }
-    this.moves++;
     if (this.mine[cell]) {
       this.open[cell] = true;
       this.finish(false, now, cell);
       return;
     }
+    this.moves++;
     this.cascade([cell]);
     this.message = "继续翻开安全格";
     this.checkWin(now);
