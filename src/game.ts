@@ -68,6 +68,7 @@ export class Game {
   elapsed = 0;
   message = "点击任意格子开始";
   private randomState: number;
+  private nextLabel: number[];
   constructor(
     public config: Config,
     public seed = crypto.getRandomValues(new Uint32Array(1))[0] || 1,
@@ -81,6 +82,7 @@ export class Game {
     this.open = Array(n).fill(false);
     this.flag = Array(n).fill(0);
     this.labels = Array(n).fill(0);
+    this.nextLabel = Array(n).fill(0);
   }
   neighbors(cell: number): number[] {
     const { width, height } = this.config,
@@ -160,6 +162,7 @@ export class Game {
       if (this.open[i] || this.mine[i] || this.flag[i]) continue;
       this.open[i] = true;
       this.labels[i] = 0;
+      this.nextLabel[i] = 0;
       if (this.isBlank(i))
         this.neighbors(i).forEach((j) => {
           if (!queued.has(j)) {
@@ -180,6 +183,7 @@ export class Game {
     if (this.mine[cell]) {
       this.open[cell] = true;
       this.labels[cell] = 0;
+      this.nextLabel[cell] = 0;
       this.finish(false, now, cell);
       return;
     }
@@ -195,14 +199,17 @@ export class Game {
   }
   markQuestion(cell: number, clear = false): void {
     if (this.over || !Number.isInteger(cell) || cell < 0 || cell >= this.labels.length) return;
-    if (clear) {
-      if (!this.labels[cell]) return;
+    if (this.labels[cell]) {
+      this.nextLabel[cell] = this.labels[cell] % 4 + 1;
       this.labels[cell] = 0;
-    } else if (this.labels[cell]) {
-      this.labels[cell] = this.labels[cell] % 4 + 1;
     } else {
-      this.labels[cell] = Math.floor(this.labelPhase / 2) + 1;
-      this.labelPhase = (this.labelPhase + 1) % 8;
+      if (clear) return;
+      if (this.nextLabel[cell]) {
+        this.labels[cell] = this.nextLabel[cell];
+      } else {
+        this.labels[cell] = Math.floor(this.labelPhase / 2) + 1;
+        this.labelPhase = (this.labelPhase + 1) % 8;
+      }
     }
     this.moves++;
   }
@@ -232,6 +239,7 @@ export class Game {
     if (boom !== undefined) {
       this.open[boom] = true;
       this.labels[boom] = 0;
+      this.nextLabel[boom] = 0;
       this.finish(false, now, boom);
       return;
     }

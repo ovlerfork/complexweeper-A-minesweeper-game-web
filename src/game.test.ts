@@ -331,25 +331,24 @@ test("share rejects malformed, unsupported and inconsistent revealed state", () 
 });
 
 
-test("question labels form alternating color pairs and repeats or clearing preserve next phase", () => {
+test("question labels pair new cells and toggle each cell off between colors", () => {
   const game = new Game({ width: 9, height: 9, mines: 10 }, 42);
   [0, 1, 2, 3, 4, 5, 6, 7, 8].forEach(i => game.markQuestion(i));
   assert.deepEqual(game.labels.slice(0, 9), [1, 1, 2, 2, 3, 3, 4, 4, 1]);
-  game.markQuestion(0);
-  assert.equal(game.labels[0], 2);
-  assert.equal(game.labelPhase, 1);
-  game.markQuestion(0);
-  assert.equal(game.labels[0], 3);
-  game.markQuestion(0);
-  assert.equal(game.labels[0], 4);
-  game.markQuestion(0);
-  assert.equal(game.labels[0], 1);
+  for (const color of [0, 2, 0, 3, 0, 4, 0, 1]) {
+    game.markQuestion(0);
+    assert.equal(game.labels[0], color);
+    assert.equal(game.labelPhase, 1);
+  }
   game.markQuestion(0, true);
   assert.equal(game.labels[0], 0);
+  game.markQuestion(0, true);
+  game.markQuestion(0);
+  assert.equal(game.labels[0], 2);
   game.markQuestion(9);
   assert.equal(game.labels[9], 1);
   assert.equal(game.started, false);
-  assert.equal(game.moves, 15);
+  assert.equal(game.moves, 20);
 });
 
 test("shared question labels retain colors and future pair phase, while v1 remains playable", () => {
@@ -363,6 +362,11 @@ test("shared question labels retain colors and future pair phase, while v1 remai
   restored.markQuestion(3);
   restored.markQuestion(4);
   assert.deepEqual(restored.labels.slice(0, 5), [1, 1, 2, 2, 3]);
+  restored.markQuestion(2);
+  assert.equal(restored.labels[2], 0);
+  restored.markQuestion(2);
+  assert.equal(restored.labels[2], 3);
+  assert.equal(restored.labelPhase, 5);
   const legacy = JSON.parse(atob(snapshot.replaceAll("-", "+").replaceAll("_", "/"))).slice(0, 11);
   legacy[0] = 1;
   const v1 = decodeGame(btoa(JSON.stringify(legacy)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")).game;
