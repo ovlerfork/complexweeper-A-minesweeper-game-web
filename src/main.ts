@@ -419,8 +419,7 @@ for (const nextMode of ["reveal", "flag", "chord"] as const)
 async function copyText(text: string, label: string): Promise<void> {
   element("manual").hidden = true;
   try {
-    if (!navigator.clipboard?.writeText)
-      throw new Error("Clipboard unavailable");
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
     await navigator.clipboard.writeText(text);
     element("copy-status").textContent = `${label}已复制`;
   } catch {
@@ -459,22 +458,14 @@ function loadSharedGame(): void {
     active = restored.active;
     settled = game.over;
     clearPress();
-    const preset = game.config.counts
-      ? -1
-      : PRESETS.findIndex(
-          (p) =>
-            p.width === game.config.width &&
-            p.height === game.config.height &&
-            p.mines === game.config.mines,
-        );
-    element<HTMLSelectElement>("difficulty").value =
-      preset < 0 ? "custom" : String(preset);
+    const preset = game.config.counts ? -1 : PRESETS.findIndex(p =>
+      p.width === game.config.width && p.height === game.config.height && p.mines === game.config.mines);
+    element<HTMLSelectElement>("difficulty").value = preset < 0 ? "custom" : String(preset);
     element("custom").hidden = preset >= 0;
     if (preset < 0) prefillCustom();
     element("copy-status").textContent = "分享对局已载入";
   } catch (error) {
-    element("copy-status").textContent =
-      error instanceof Error ? error.message : "无法载入分享对局";
+    element("copy-status").textContent = error instanceof Error ? error.message : "无法载入分享对局";
   }
 }
 window.addEventListener("hashchange", () => {
