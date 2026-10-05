@@ -55,6 +55,8 @@ export class Game {
   clue: number[];
   open: boolean[];
   flag: number[];
+  labels: number[];
+  labelPhase = 0;
   totals = [0, 0, 0, 0, 0];
   firstClick = -1;
   started = false;
@@ -78,6 +80,7 @@ export class Game {
     this.clue = Array(n).fill(-1);
     this.open = Array(n).fill(false);
     this.flag = Array(n).fill(0);
+    this.labels = Array(n).fill(0);
   }
   neighbors(cell: number): number[] {
     const { width, height } = this.config,
@@ -188,6 +191,19 @@ export class Game {
     this.flag[cell] = (this.flag[cell] + 1) % 5;
     this.moves++;
   }
+  markQuestion(cell: number, clear = false): void {
+    if (this.over || !Number.isInteger(cell) || cell < 0 || cell >= this.labels.length) return;
+    if (clear) {
+      if (!this.labels[cell]) return;
+      this.labels[cell] = 0;
+    } else if (this.labels[cell]) {
+      this.labels[cell] = this.labels[cell] % 4 + 1;
+    } else {
+      this.labels[cell] = Math.floor(this.labelPhase / 2) + 1;
+      this.labelPhase = (this.labelPhase + 1) % 8;
+    }
+    this.moves++;
+  }
   matchCombo(cell: number): boolean {
     const truth = [0, 0],
       got = [0, 0];
@@ -250,7 +266,10 @@ export class Game {
       rows.push(
         this.mine
           .slice(r * this.config.width, (r + 1) * this.config.width)
-          .map((_, c) => this.token(r * this.config.width + c))
+          .map((_, c) => {
+            const i = r * this.config.width + c;
+            return this.token(i) + (this.labels[i] ? `{?${"ABCD"[this.labels[i] - 1]}}` : "");
+          })
           .join(format === "csv" ? "," : "\t"),
       );
     return rows.join("\n");

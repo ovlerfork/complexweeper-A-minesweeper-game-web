@@ -36,7 +36,7 @@ ${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
 <div class="dashboard"><div class="mine-counts">${TYPES.slice(1).map((t, i) => `<div class="counter" aria-label="${t} 剩余雷数"><span class="counter-flag" id="flag-icon-${i+1}"></span><strong id="count-${i+1}"></strong></div>`).join("")}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局"></button><div class="time"><strong id="time" aria-label="计时"></strong></div></div>
 <div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
 </div></div>
-<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
+<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="question-mode" aria-pressed="false" title="引号标记问号；重复切换颜色；Shift 点击或 Shift+引号清除">? 问号</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
 <div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
 <div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
 <div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
@@ -56,7 +56,7 @@ ${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
 const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 let game = new Game(PRESETS[0]);
-let mode: "reveal" | "flag" | "chord" = "reveal";
+let mode: "reveal" | "flag" | "chord" | "question" = "reveal";
 let active = true;
 let settled = false;
 let zoom = 2;
@@ -138,10 +138,18 @@ function mouseCell(event: MouseEvent): number {
   return cell ? Number(cell.dataset.cell) : -1;
 }
 
+let hoveredCell = -1;
+function clickCell(i: number, clear = false): void {
+  if (mode === "question") game.markQuestion(i, clear);
+  else if (mode === "flag") game.cycleFlag(i);
+  else if (mode === "chord") game.chord(i);
+  else game.reveal(i);
+}
 let cells: HTMLButtonElement[] = [];
 function createBoard(): void {
   const board = element<HTMLDivElement>("board");
   board.replaceChildren();
+  hoveredCell = -1;
   element("app").style.setProperty("--zoom", String(zoom));
   element("app").style.setProperty("--board-width", `${game.config.width * 16}px`);
   board.style.setProperty("--columns", String(game.config.width));
@@ -150,13 +158,11 @@ function createBoard(): void {
     cell.type = "button";
     cell.className = "cell";
     cell.dataset.cell = String(i);
+    cell.addEventListener("pointerenter", () => hoveredCell = i);
+    cell.addEventListener("pointerleave", () => { if (hoveredCell === i) hoveredCell = -1; });
     cell.addEventListener("click", (e) => {
       if ((e as MouseEvent).detail === 0)
-        act(() => {
-          if (mode === "flag") game.cycleFlag(i);
-          else if (mode === "chord") game.chord(i);
-          else game.reveal(i);
-        });
+        act(() => clickCell(i, (e as MouseEvent).shiftKey));
     });
     cell.addEventListener("contextmenu", (e) => e.preventDefault());
     cell.addEventListener("auxclick", (e) => e.preventDefault());
@@ -178,11 +184,7 @@ function createBoard(): void {
     });
     cell.addEventListener("pointerup", (e) => {
       if (e.pointerType === "mouse") return;
-      act(() => {
-        if (mode === "flag") game.cycleFlag(i);
-        else if (mode === "chord") game.chord(i);
-        else game.reveal(i);
-      });
+      act(() => clickCell(i, e.shiftKey));
     });
     board.append(cell);
     return cell;
@@ -202,9 +204,7 @@ document.addEventListener("mouseup", (e) => {
       consumed = true;
       act(() => game.chord(target));
     } else if (e.button === 0 && leftDown)
-      act(() =>
-        mode === "flag" ? game.cycleFlag(target) : game.reveal(target),
-      );
+      act(() => clickCell(target, e.shiftKey));
   }
   if (e.button === 0) leftDown = false;
   if (e.button === 2) rightDown = false;
@@ -238,12 +238,20 @@ function render(): void {
     let tile = token === "?" ? "closed" : token === "_" ? "blank" : token.startsWith("X") ? `wrong_${game.flag[i]}` : isFlag ? `flag_${game.flag[i]}` : isMine ? `${game.boom === i ? "boom" : "mine"}_${game.mine[i]}` : `num_${game.clue[i]}`;
     if (preview.has(i) || (i === held && leftDown && !chordHeld && !game.open[i] && !game.flag[i])) tile = "blank";
     sprite(cell, tile);
+    if (game.labels[i]) {
+      const marker = document.createElement("span");
+      marker.className = `question-label question-${game.labels[i]}`;
+      marker.textContent = "?";
+      marker.setAttribute("aria-hidden", "true");
+      cell.append(marker);
+    }
     const row = Math.floor(i / game.config.width) + 1,
       col = (i % game.config.width) + 1;
     cell.setAttribute(
       "aria-label",
       `第 ${row} 行第 ${col} 列，${token === "?" ? "未翻开" : token === "_" ? "空白" : isMine ? `${TYPES[type]} 雷` : isFlag ? `${token.startsWith("X") ? "错误" : "已标"} ${TYPES[type]} 旗` : token}`,
     );
+    if (game.labels[i]) cell.setAttribute("aria-label", `${cell.getAttribute("aria-label")}，${["蓝色 A", "紫色 B", "棕色 C", "深绿色 D"][game.labels[i] - 1]}问号标记`);
     if (
       preview.has(i) ||
       (i === held && leftDown && !chordHeld && !game.open[i] && !game.flag[i])
@@ -318,6 +326,16 @@ document.addEventListener("pointercancel", () => {
   render();
 });
 document.addEventListener("keydown", (e) => {
+  if ((e.key === "'" || e.key === '"') && !e.repeat && !e.ctrlKey && !e.metaKey) {
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, select, [contenteditable], dialog") || document.querySelector("dialog[open]")) return;
+    const focused = document.activeElement?.closest<HTMLButtonElement>(".cell");
+    const cell = focused ? Number(focused.dataset.cell) : hoveredCell;
+    if (cell >= 0 && active && !game.over) {
+      e.preventDefault();
+      act(() => game.markQuestion(cell, e.shiftKey));
+    }
+  }
   if (e.key === "F2") {
     e.preventDefault();
     restart();
@@ -452,10 +470,10 @@ element<HTMLFormElement>("custom").addEventListener("submit", (e) => {
   restart({ width, height, mines, counts });
   element<HTMLDialogElement>("custom-dialog").close();
 });
-for (const nextMode of ["reveal", "flag", "chord"] as const)
+for (const nextMode of ["reveal", "flag", "question", "chord"] as const)
   element(`${nextMode}-mode`).addEventListener("click", () => {
     mode = nextMode;
-    for (const option of ["reveal", "flag", "chord"])
+    for (const option of ["reveal", "flag", "question", "chord"])
       element(`${option}-mode`).setAttribute(
         "aria-pressed",
         String(option === mode),

@@ -308,8 +308,58 @@ test("share rejects malformed, unsupported and inconsistent revealed state", () 
     change(data);
     return btoa(JSON.stringify(data)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
   };
-  for (const bad of ["!", "a".repeat(40001), mutate(d => d[0] = 2),
+  for (const bad of ["!", "a".repeat(40001), mutate(d => d[0] = 3),
     mutate(d => d[2][0] = 999), mutate(d => d[9][0][1] = 999),
     mutate(d => d[10] = [[d[9][0][0], 1]]), mutate(d => d[7] = 1)])
     assert.throws(() => decodeGame(bad), /分享链接/);
+});
+
+
+test("question labels form alternating color pairs and repeats or clearing preserve next phase", () => {
+  const game = new Game({ width: 9, height: 9, mines: 10 }, 42);
+  [0, 1, 2, 3, 4, 5, 6, 7, 8].forEach(i => game.markQuestion(i));
+  assert.deepEqual(game.labels.slice(0, 9), [1, 1, 2, 2, 3, 3, 4, 4, 1]);
+  game.markQuestion(0);
+  assert.equal(game.labels[0], 2);
+  assert.equal(game.labelPhase, 1);
+  game.markQuestion(0);
+  assert.equal(game.labels[0], 3);
+  game.markQuestion(0);
+  assert.equal(game.labels[0], 4);
+  game.markQuestion(0);
+  assert.equal(game.labels[0], 1);
+  game.markQuestion(0, true);
+  assert.equal(game.labels[0], 0);
+  game.markQuestion(9);
+  assert.equal(game.labels[9], 1);
+  assert.equal(game.started, false);
+  assert.equal(game.moves, 15);
+});
+
+test("shared question labels retain colors and future pair phase, while v1 remains playable", () => {
+  const original = new Game({ width: 9, height: 9, mines: 10 }, 42);
+  original.reveal(40, 1000);
+  [0, 1, 2].forEach(i => original.markQuestion(i));
+  const snapshot = encodeGame(original, true, 1500);
+  const restored = decodeGame(snapshot, 2000).game;
+  assert.deepEqual(restored.labels, original.labels);
+  assert.equal(restored.labelPhase, 3);
+  restored.markQuestion(3);
+  restored.markQuestion(4);
+  assert.deepEqual(restored.labels.slice(0, 5), [1, 1, 2, 2, 3]);
+  const legacy = JSON.parse(atob(snapshot.replaceAll("-", "+").replaceAll("_", "/"))).slice(0, 11);
+  legacy[0] = 1;
+  const v1 = decodeGame(btoa(JSON.stringify(legacy)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")).game;
+  assert.ok(v1.labels.every(color => color === 0));
+  assert.equal(v1.labelPhase, 0);
+  assert.deepEqual(v1.mine, original.mine);
+});
+
+test("question export annotates visible tokens without exposing covered mines", () => {
+  const game = fixture(3, 3, [[0, 1], [8, 4]]);
+  game.open[4] = true;
+  game.markQuestion(0);
+  game.markQuestion(4);
+  game.markQuestion(8);
+  assert.equal(game.export("csv"), "?{?A},?,?\n?,√2{?A},?\n?,?,?{?B}");
 });

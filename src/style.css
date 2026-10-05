@@ -33,7 +33,7 @@ button:disabled { cursor: default; }
 .time { position: absolute; top: calc(50% - 13px * var(--zoom)); right: calc(2px * var(--zoom)); height: calc(26px * var(--zoom)); border: calc(1px * var(--zoom)) solid; border-color: #808080 #fff #fff #808080; }
 .board-scroll { width: max-content; margin: calc(6px * var(--zoom)) auto 0; border: calc(3px * var(--zoom)) solid; border-color: #808080 #fff #fff #808080; }
 .board { display: grid; grid-template-columns: repeat(var(--columns), calc(16px * var(--zoom))); width: max-content; gap: 0; }
-.cell { width: calc(16px * var(--zoom)); height: calc(16px * var(--zoom)); border: 0; padding: 0; touch-action: manipulation; }
+.cell { position: relative; width: calc(16px * var(--zoom)); height: calc(16px * var(--zoom)); border: 0; padding: 0; touch-action: manipulation; }
 .play-toolbar, .copy-bar, .game-status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 0; }
 .play-toolbar { justify-content: space-between; }
 .mode { display: flex; }
@@ -63,3 +63,9 @@ dialog td { text-align: right; }
 .brand-mark { display: none; }
 [hidden] { display: none !important; }
 @media (max-width: 600px) { #app { margin: 8px auto; } .play-toolbar, .copy-bar { padding: 6px; } .mode button { min-height: 32px; } .copy-bar button, .copy-bar select { min-height: 32px; } .play-toolbar #progress { font-size: 11px; } }
+
+.question-label { position: absolute; right: 0; top: 0; pointer-events: none; font: bold calc(8px * var(--zoom))/1 monospace; background: #c0c0c0; padding: 0 calc(1px * var(--zoom)); }
+.question-1 { color: #000080; }
+.question-2 { color: #660080; }
+.question-3 { color: #804000; }
+.question-4 { color: #005000; }
