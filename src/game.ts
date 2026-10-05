@@ -193,7 +193,9 @@ export class Game {
   }
   cycleFlag(cell: number): void {
     if (this.over || this.open[cell]) return;
-    this.flag[cell] = (this.flag[cell] + 1) % 5;
+    do {
+      this.flag[cell] = (this.flag[cell] + 1) % 5;
+    } while (this.flag[cell] && this.config.counts?.[this.flag[cell] - 1] === 0);
     this.moves++;
   }
   markQuestion(cell: number, clear = false): void {
