@@ -2,6 +2,8 @@ import { Game, PRESETS, TYPES, splitEvenly } from "./game";
 import "./style.css";
 import { encodeGame, decodeGame } from "./share";
 import atlas from "../素材/图集.json";
+declare const __SOURCE_URL__: string;
+const licenseUrl = new URL("../LICENSE", import.meta.url).href;
 const atlasUrl = new URL("../素材/图集.png", import.meta.url).href;
 const sprites = new Map(atlas.slots.map(slot => [slot.name, slot]));
 function sprite(target: HTMLElement, name: string): void {
@@ -395,7 +397,7 @@ element("rules").addEventListener("click", () =>
 element("about").addEventListener("click", () =>
   dialog(
     "关于复扫雷",
-    '<div class="about-brand"><span class="brand-mark">√</span><strong>复扫雷 Complexweeper · 网页版</strong></div><p>基于 Microsoft® 扫雷，原版作者 Robert Donner、Curt Johnson。</p><p>原生版本及新增原生素材：青月晓。网页版开发：Ovler。网页版沿用原生版图集与经典界面布局。</p><p>Copyright © 2026 青月晓<br>免费软件，代码采用 GPL-3.0 授权。原扫雷图像素材权利属于 Microsoft，不在 GPL-3.0 授权范围内。本项目与 Microsoft 公司无隶属关系。</p>',
+    `<div class="about-brand"><span class="brand-mark">√</span><strong>复扫雷 Complexweeper · 网页版</strong></div><p>基于 Microsoft® 扫雷，原版作者 Robert Donner、Curt Johnson。</p><p>原生版本及新增原生素材：青月晓。网页版开发：Ovler。网页版沿用原生版图集与经典界面布局。网页版修改日期：2026-10-05。</p><p>Copyright © 2026 青月晓<br>代码采用 GPL-3.0 授权。您可以按照 GNU 通用公共许可证第 3 版的条款复制、修改和再分发本程序。本程序不提供任何担保，包括适销性或特定用途适用性的担保。具体条款请查看许可证。</p><p><a href="${__SOURCE_URL__}" target="_blank" rel="noopener noreferrer">本版本完整对应源码</a> · <a href="${licenseUrl}" target="_blank" rel="noopener noreferrer">GPL-3.0 许可证全文</a></p><p>原扫雷图像素材权利属于 Microsoft，不在 GPL-3.0 授权范围内。本项目与 Microsoft 公司无隶属关系。</p>`,
   ),
 );
 element("exit").addEventListener("click", () => {
