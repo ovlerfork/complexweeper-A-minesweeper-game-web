@@ -30,9 +30,10 @@ app.innerHTML = `
 <button id="restart">开局(N)<span>F2</span></button><hr>
 ${PRESETS.map((p, i) => `<button data-difficulty="${i}">${["初级(B)", "中级(I)", "高级(E)"][i]}<span>${p.width}×${p.height} · ${p.mines} 雷</span></button>`).join("")}
 <button data-difficulty="custom">自定义(C)…</button><hr><button id="records">最高分纪录(R)…</button><hr>
-${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
+<button data-zoom="fit">适应窗口</button>
+<label class="menu-setting">缩放 <span><input id="zoom-percent" type="number" min="1" step="any" value="100" aria-label="缩放百分比"> %</span></label>
 <hr><label class="menu-setting">中键行为<select id="middle-action"><option value="question">问号标记</option><option value="chord">展开邻格</option></select></label><hr><button id="exit">退出(X)</button></div></details><details><summary>帮助(H)</summary><div class="menu"><button id="rules">玩法与操作(H)</button><hr><button id="about">关于复扫雷(A)…</button></div></details></nav>
-<select id="difficulty" hidden>${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select><select id="zoom" hidden><option value="1">100%</option><option value="2" selected>200%</option><option value="3">300%</option></select>
+<select id="difficulty" hidden>${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select>
 <div class="native-scroll"><div class="native-frame">
 <div class="dashboard"><div class="mine-counts">${TYPES.slice(1).map((t, i) => `<div class="counter" aria-label="${t} 剩余雷数"><span class="counter-flag" id="flag-icon-${i+1}"></span><strong id="count-${i+1}"></strong></div>`).join("")}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局"></button><div class="time"><strong id="time" aria-label="计时"></strong></div></div>
 <div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
@@ -61,7 +62,8 @@ let mode: "reveal" | "flag" | "chord" | "question" = "reveal";
 let middleAction: "question" | "chord" = "question";
 let active = true;
 let settled = false;
-let zoom = 2;
+let zoom = 1;
+let fitZoom = true;
 let scores = [0, 0, 0];
 let scoresPersisted = true;
 try {
@@ -193,6 +195,7 @@ function createBoard(): void {
     return cell;
   });
   render();
+  updateZoom();
 }
 document.addEventListener("mousemove", (e) => {
   if (!leftDown && !middleDown && !chordHeld) return;
@@ -359,15 +362,45 @@ document.addEventListener("keydown", (e) => {
     restart();
   }
 });
-element("zoom").addEventListener("change", () => {
-  zoom = Number(element<HTMLSelectElement>("zoom").value);
-  element("app").style.setProperty("--zoom", String(zoom));
-  updateZoomMenu();
-});
-function updateZoomMenu(): void {
-  document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach(button => button.setAttribute("aria-checked", String(Number(button.dataset.zoom) === zoom)));
+function applyZoom(value: number): void {
+  zoom = value;
+  app.style.setProperty("--zoom", String(zoom));
+  const frame = document.querySelector<HTMLElement>(".native-frame")!;
+  app.style.width = `${Math.max(320, frame.getBoundingClientRect().width)}px`;
 }
-updateZoomMenu();
+function updateZoom(): void {
+  if (fitZoom) {
+    const frame = document.querySelector<HTMLElement>(".native-frame")!;
+    const panel = document.querySelector<HTMLElement>(".game")!;
+    const margins = getComputedStyle(app);
+    const availableHeight = window.innerHeight - parseFloat(margins.marginTop) - parseFloat(margins.marginBottom);
+    applyZoom(1);
+    let low = 0;
+    let high = window.innerWidth / frame.getBoundingClientRect().width + 1;
+    // Measure wrapped toolbars as well as the scaled frame at each candidate size.
+    for (let i = 0; i < 16; i++) {
+      const candidate = (low + high) / 2;
+      applyZoom(candidate);
+      if (frame.getBoundingClientRect().width <= document.documentElement.clientWidth && panel.getBoundingClientRect().height <= availableHeight)
+        low = candidate;
+      else high = candidate;
+    }
+    applyZoom(Math.max(low, 0.01));
+  } else applyZoom(zoom);
+  element<HTMLInputElement>("zoom-percent").value = String(Math.round(zoom * 10000) / 100);
+  document.querySelector<HTMLButtonElement>('[data-zoom="fit"]')!.setAttribute("aria-checked", String(fitZoom));
+}
+element<HTMLInputElement>("zoom-percent").addEventListener("change", (e) => {
+  const input = e.target as HTMLInputElement;
+  if (!input.checkValidity() || !Number.isFinite(input.valueAsNumber)) {
+    input.value = String(Math.round(zoom * 10000) / 100);
+    return;
+  }
+  fitZoom = false;
+  zoom = input.valueAsNumber / 100;
+  updateZoom();
+});
+window.addEventListener("resize", updateZoom);
 element<HTMLSelectElement>("middle-action").addEventListener("change", (e) => {
   middleAction = (e.target as HTMLSelectElement).value === "chord" ? "chord" : "question";
   clearPress();
@@ -391,7 +424,7 @@ document.querySelectorAll<HTMLButtonElement>(".menu button").forEach(button => b
     const select = element<HTMLSelectElement>("difficulty"); select.value = button.dataset.difficulty; select.dispatchEvent(new Event("change"));
 
   }
-  if (button.dataset.zoom) { const select = element<HTMLSelectElement>("zoom"); select.value = button.dataset.zoom; select.dispatchEvent(new Event("change")); }
+  if (button.dataset.zoom === "fit") { fitZoom = true; updateZoom(); }
 }));
 element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>
