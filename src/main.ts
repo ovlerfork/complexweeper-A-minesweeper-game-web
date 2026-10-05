@@ -31,13 +31,13 @@ app.innerHTML = `
 ${PRESETS.map((p, i) => `<button data-difficulty="${i}">${["初级(B)", "中级(I)", "高级(E)"][i]}<span>${p.width}×${p.height} · ${p.mines} 雷</span></button>`).join("")}
 <button data-difficulty="custom">自定义(C)…</button><hr><button id="records">最高分纪录(R)…</button><hr>
 ${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
-<hr><button id="exit">退出(X)</button></div></details><details><summary>帮助(H)</summary><div class="menu"><button id="rules">玩法与操作(H)</button><hr><button id="about">关于复扫雷(A)…</button></div></details></nav>
+<hr><label class="menu-setting">中键行为<select id="middle-action"><option value="question">问号标记</option><option value="chord">展开邻格</option></select></label><hr><button id="exit">退出(X)</button></div></details><details><summary>帮助(H)</summary><div class="menu"><button id="rules">玩法与操作(H)</button><hr><button id="about">关于复扫雷(A)…</button></div></details></nav>
 <select id="difficulty" hidden>${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select><select id="zoom" hidden><option value="1">100%</option><option value="2" selected>200%</option><option value="3">300%</option></select>
 <div class="native-scroll"><div class="native-frame">
 <div class="dashboard"><div class="mine-counts">${TYPES.slice(1).map((t, i) => `<div class="counter" aria-label="${t} 剩余雷数"><span class="counter-flag" id="flag-icon-${i+1}"></span><strong id="count-${i+1}"></strong></div>`).join("")}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局"></button><div class="time"><strong id="time" aria-label="计时"></strong></div></div>
 <div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
 </div></div>
-<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="question-mode" aria-pressed="false" title="中键或引号标记问号；同格按蓝→灭→紫→灭→棕→灭→绿→灭循环；Shift 点击或 Shift+引号清除">? 问号</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="remaining-mines">剩余雷：10</span><span id="progress">0 / 71 安全格</span></div>
+<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="question-mode" aria-pressed="false" title="引号标记问号；同格按蓝→灭→紫→灭→棕→灭→绿→灭循环；Shift 点击或 Shift+引号清除">? 问号</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="remaining-mines">剩余雷：10</span><span id="progress">0 / 71 安全格</span></div>
 <div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
 <div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
 <div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
@@ -58,6 +58,7 @@ const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 let game = new Game(PRESETS[0]);
 let mode: "reveal" | "flag" | "chord" | "question" = "reveal";
+let middleAction: "question" | "chord" = "question";
 let active = true;
 let settled = false;
 let zoom = 2;
@@ -178,7 +179,8 @@ function createBoard(): void {
       if (e.button === 1) middleDown = true;
       held = i;
       chordHeld =
-        (leftDown && rightDown) || (leftDown && mode === "chord");
+        (leftDown && rightDown) || (leftDown && mode === "chord") ||
+        (middleDown && middleAction === "chord");
       if (chordHeld) consumed = false;
       else if (e.button === 2) act(() => game.cycleFlag(i));
       render();
@@ -366,6 +368,11 @@ function updateZoomMenu(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach(button => button.setAttribute("aria-checked", String(Number(button.dataset.zoom) === zoom)));
 }
 updateZoomMenu();
+element<HTMLSelectElement>("middle-action").addEventListener("change", (e) => {
+  middleAction = (e.target as HTMLSelectElement).value === "chord" ? "chord" : "question";
+  clearPress();
+  render();
+});
 const menus = Array.from(document.querySelectorAll<HTMLDetailsElement>(".menu-bar details"));
 function closeMenus(): void { menus.forEach(menu => menu.open = false); }
 menus.forEach(menu => menu.addEventListener("toggle", () => { if (menu.open) menus.filter(other => other !== menu).forEach(other => other.open = false); }));
@@ -390,7 +397,7 @@ element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>
   dialog(
     "玩法与操作",
-    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗：空→+1→−1→+i→−i→空。左右键同时按住预览，松手展开。手机使用翻开、标旗、问号、展开模式。F2 或人脸按钮开始新一局。</p><p>中键或问号模式点击格子可标记问号；指针停在格子上或聚焦格子后，按单引号键也可标记。新格子的颜色按蓝→蓝→紫→紫→棕→棕→绿→绿循环。</p><p>重复标记同一格按蓝→灭→紫→灭→棕→灭→绿→灭循环。重新点亮同一格后，下一个新格子仍使用该颜色，再下一个使用下一种颜色。Shift+中键、问号模式下 Shift 点击或 Shift+单引号可清除，保留该格下一种颜色。</p><p>格子翻开时会清除原有问号。已翻开的格子和旗帜上仍可添加问号；问号不影响扫雷规则，也不会启动计时。</p><p>展开时，旗数须等于真实雷数，实虚数量须符合真实比例或其倒数。旗的位置错误仍可能踩雷。</p><p>各类型计数是对应雷总数减去对应旗数，首次翻开后显示。工具栏的剩余雷为所有类型雷的总数减去所有旗帜数，开局即显示；每面旗计一颗雷，问号不计入。旗数超过总雷数时可显示负数。复制只包含当前可见信息。</p>",
+    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗：空→+1→−1→+i→−i→空。左右键同时按住预览，松手展开。手机使用翻开、标旗、问号、展开模式。F2 或人脸按钮开始新一局。</p><p>中键默认标记问号，可在游戏菜单的“中键行为”中改为按住预览、松手展开邻格。问号模式点击格子可标记问号；指针停在格子上或聚焦格子后，按单引号键也可标记。新格子的颜色按蓝→蓝→紫→紫→棕→棕→绿→绿循环。</p><p>重复标记同一格按蓝→灭→紫→灭→棕→灭→绿→灭循环。重新点亮同一格后，下一个新格子仍使用该颜色，再下一个使用下一种颜色。中键设为问号标记时 Shift+中键、问号模式下 Shift 点击或 Shift+单引号可清除，保留该格下一种颜色。</p><p>格子翻开时会清除原有问号。已翻开的格子和旗帜上仍可添加问号；问号不影响扫雷规则，也不会启动计时。</p><p>展开时，旗数须等于真实雷数，实虚数量须符合真实比例或其倒数。旗的位置错误仍可能踩雷。</p><p>各类型计数是对应雷总数减去对应旗数，首次翻开后显示。工具栏的剩余雷为所有类型雷的总数减去所有旗帜数，开局即显示；每面旗计一颗雷，问号不计入。旗数超过总雷数时可显示负数。复制只包含当前可见信息。</p>",
   ),
 );
 element("about").addEventListener("click", () =>
