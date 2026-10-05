@@ -410,6 +410,12 @@ element("split-counts").addEventListener("click", () => {
     input.value = String(counts[i]);
   });
 });
+element<HTMLDialogElement>("custom-dialog").addEventListener("close", () => {
+  const preset = game.config.counts ? -1 : PRESETS.findIndex(p =>
+    p.width === game.config.width && p.height === game.config.height && p.mines === game.config.mines);
+  element<HTMLSelectElement>("difficulty").value = preset < 0 ? "custom" : String(preset);
+  render();
+});
 element("cancel-custom").addEventListener("click", () => element<HTMLDialogElement>("custom-dialog").close());
 element("custom").addEventListener("input", updateCountLimits);
 element<HTMLSelectElement>("difficulty").addEventListener("change", (e) => {
