@@ -159,6 +159,7 @@ export class Game {
       const i = stack.pop()!;
       if (this.open[i] || this.mine[i] || this.flag[i]) continue;
       this.open[i] = true;
+      this.labels[i] = 0;
       if (this.isBlank(i))
         this.neighbors(i).forEach((j) => {
           if (!queued.has(j)) {
@@ -178,6 +179,7 @@ export class Game {
     }
     if (this.mine[cell]) {
       this.open[cell] = true;
+      this.labels[cell] = 0;
       this.finish(false, now, cell);
       return;
     }
@@ -229,6 +231,7 @@ export class Game {
     const boom = targets.find((j) => this.mine[j]);
     if (boom !== undefined) {
       this.open[boom] = true;
+      this.labels[boom] = 0;
       this.finish(false, now, boom);
       return;
     }

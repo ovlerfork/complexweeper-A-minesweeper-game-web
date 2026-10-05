@@ -36,7 +36,7 @@ ${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
 <div class="dashboard"><div class="mine-counts">${TYPES.slice(1).map((t, i) => `<div class="counter" aria-label="${t} 剩余雷数"><span class="counter-flag" id="flag-icon-${i+1}"></span><strong id="count-${i+1}"></strong></div>`).join("")}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局"></button><div class="time"><strong id="time" aria-label="计时"></strong></div></div>
 <div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
 </div></div>
-<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="question-mode" aria-pressed="false" title="引号标记问号；重复切换颜色；Shift 点击或 Shift+引号清除">? 问号</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
+<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="question-mode" aria-pressed="false" title="中键或引号标记问号；重复切换颜色；Shift 点击或 Shift+引号清除">? 问号</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
 <div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
 <div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
 <div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
@@ -177,7 +177,7 @@ function createBoard(): void {
       if (e.button === 1) middleDown = true;
       held = i;
       chordHeld =
-        middleDown || (leftDown && rightDown) || (leftDown && mode === "chord");
+        (leftDown && rightDown) || (leftDown && mode === "chord");
       if (chordHeld) consumed = false;
       else if (e.button === 2) act(() => game.cycleFlag(i));
       render();
@@ -205,6 +205,8 @@ document.addEventListener("mouseup", (e) => {
       act(() => game.chord(target));
     } else if (e.button === 0 && leftDown)
       act(() => clickCell(target, e.shiftKey));
+    else if (e.button === 1 && middleDown)
+      act(() => game.markQuestion(target, e.shiftKey));
   }
   if (e.button === 0) leftDown = false;
   if (e.button === 2) rightDown = false;
@@ -385,7 +387,7 @@ element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>
   dialog(
     "玩法与操作",
-    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗；中键或左右键同时按住预览，松手展开。手机使用翻开、标旗、展开模式。F2 或人脸按钮开始新一局。</p><p>展开时，旗数须等于真实雷数，实虚数量须符合真实比例或其倒数。旗的位置错误仍可能踩雷。</p><p>计数是对应雷总数减去对应旗数，首次翻开后显示。复制只包含当前可见信息。</p>",
+    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗；中键标记问号，重复切换颜色，Shift+中键清除；左右键同时按住预览，松手展开。手机使用翻开、标旗、问号、展开模式。F2 或人脸按钮开始新一局。</p><p>展开时，旗数须等于真实雷数，实虚数量须符合真实比例或其倒数。旗的位置错误仍可能踩雷。格子翻开时会清除原有问号，已翻开的格子仍可添加问号。</p><p>计数是对应雷总数减去对应旗数，首次翻开后显示。复制只包含当前可见信息。</p>",
   ),
 );
 element("about").addEventListener("click", () =>

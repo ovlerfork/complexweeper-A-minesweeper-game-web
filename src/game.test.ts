@@ -33,10 +33,20 @@ test("cancellation 0 is visible and does not flood, while true blanks flood with
   ]);
   assert.equal(game.clue[2], 0);
   assert.equal(game.isBlank(2), false);
+  game.markQuestion(2);
   game.reveal(2, 1100);
+  assert.equal(game.labels[2], 0);
   assert.equal(game.open.filter(Boolean).length, 1);
   game.cycleFlag(10);
+  game.markQuestion(2);
+  game.markQuestion(10);
+  game.markQuestion(13);
+  const phase = game.labelPhase;
   game.reveal(14, 1200);
+  assert.equal(game.labels[2], 1);
+  assert.equal(game.labels[10], 2);
+  assert.equal(game.labels[13], 0);
+  assert.equal(game.labelPhase, phase);
   assert.equal(game.open[10], false);
   assert.equal(game.open[13], true);
   assert.equal(game.token(2), "0");
@@ -76,7 +86,9 @@ test("chord accepts swapped real/imaginary counts but wrong positions can lose",
   game.flag[2] = 4;
   game.flag[6] = 1;
   assert.equal(game.matchCombo(4), true);
+  game.markQuestion(1);
   game.chord(4, 2000);
+  assert.equal(game.labels[1], 0);
   assert.equal(game.win, true);
   assert.equal(game.elapsed, 1000);
   const wrong = fixture(3, 3, [
@@ -88,7 +100,9 @@ test("chord accepts swapped real/imaginary counts but wrong positions can lose",
   wrong.flag[1] = 1;
   wrong.flag[3] = 2;
   wrong.flag[5] = 3;
+  wrong.markQuestion(0);
   wrong.chord(4, 2000);
+  assert.equal(wrong.labels[0], 0);
   assert.equal(wrong.over, true);
   assert.equal(wrong.win, false);
   assert.equal(wrong.boom, 0);
@@ -114,7 +128,9 @@ test("exports visible state in CSV or tab text and exposes loss mines with wrong
   game.flag[2] = 2;
   assert.equal(game.export("csv"), "?,?,F−1\n?,√2,?\n?,?,?");
   assert.equal(game.export("text").split("\n")[0], "?\t?\tF−1");
+  game.markQuestion(0);
   game.reveal(0, 2000);
+  assert.equal(game.labels[0], 0);
   assert.equal(game.export("csv"), "M+1,?,XF−1\n?,√2,?\n?,?,M−i");
 });
 
