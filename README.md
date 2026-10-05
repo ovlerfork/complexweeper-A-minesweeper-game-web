@@ -101,7 +101,7 @@ pnpm dev
 
 在仓库 Settings → Pages 中将 Source 设为 **GitHub Actions**。`.github/workflows/pages.yml` 会在 `main` 或 `feat/web-game` 分支推送时构建并部署，也支持手动运行。初次网页迁移可从 `feat/web-game` 部署，后续主分支更新会继续部署。
 
-Vite 使用相对资源路径，支持 GitHub Pages 的仓库子路径；不需要后端服务。网页沿用原生版的经典灰色布局与 `素材/图集.png` 图像素材，默认缩放至适应窗口，支持自定义缩放百分比。
+Vite 使用相对资源路径，支持 GitHub Pages 的仓库子路径；不需要后端服务。网页沿用原生版的经典灰色布局与 `素材/图集.png` 图像素材，默认缩放至适应窗口，游戏菜单可选择 100%、200%、300% 或自定义缩放百分比。
 
 ### 原生版本与授权
 

@@ -31,7 +31,8 @@ app.innerHTML = `
 ${PRESETS.map((p, i) => `<button data-difficulty="${i}">${["初级(B)", "中级(I)", "高级(E)"][i]}<span>${p.width}×${p.height} · ${p.mines} 雷</span></button>`).join("")}
 <button data-difficulty="custom">自定义(C)…</button><hr><button id="records">最高分纪录(R)…</button><hr>
 <button data-zoom="fit">适应窗口</button>
-<label class="menu-setting">缩放 <span><input id="zoom-percent" type="number" min="1" step="any" value="100" aria-label="缩放百分比"> %</span></label>
+${[1, 2, 3].map(value => `<button data-zoom="${value}">${value * 100}%</button>`).join("")}
+<button data-zoom="custom">自定义…</button>
 <hr><label class="menu-setting">中键行为<select id="middle-action"><option value="question">问号标记</option><option value="chord">展开邻格</option></select></label><hr><button id="exit">退出(X)</button></div></details><details><summary>帮助(H)</summary><div class="menu"><button id="rules">玩法与操作(H)</button><hr><button id="about">关于复扫雷(A)…</button></div></details></nav>
 <select id="difficulty" hidden>${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select>
 <div class="native-scroll"><div class="native-frame">
@@ -53,6 +54,7 @@ ${PRESETS.map((p, i) => `<button data-difficulty="${i}">${["初级(B)", "中级(
   .join(
     "",
   )}<button id="split-counts" type="button">按合计均分</button><button type="submit">开始自定义</button></div><p id="custom-error" role="alert"></p><button id="cancel-custom" type="button">取消</button></form></dialog>
+<dialog id="zoom-dialog" aria-labelledby="zoom-title"><h2 id="zoom-title">自定义缩放</h2><form id="custom-zoom"><label>缩放 <input id="zoom-percent" type="number" min="1" step="any" value="100" aria-label="缩放百分比" required> %</label><div class="dialog-actions"><button type="submit">确定</button><button id="cancel-zoom" type="button">取消</button></div></form></dialog>
 <dialog id="info-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><div id="dialog-body"></div><form method="dialog"><button>关闭</button></form></dialog>
 `;
 const element = <T extends HTMLElement>(id: string) =>
@@ -387,19 +389,19 @@ function updateZoom(): void {
     }
     applyZoom(Math.max(low, 0.01));
   } else applyZoom(zoom);
-  element<HTMLInputElement>("zoom-percent").value = String(Math.round(zoom * 10000) / 100);
-  document.querySelector<HTMLButtonElement>('[data-zoom="fit"]')!.setAttribute("aria-checked", String(fitZoom));
+  const selected = fitZoom ? "fit" : [1, 2, 3].includes(zoom) ? String(zoom) : "custom";
+  document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.zoom === selected)));
 }
-element<HTMLInputElement>("zoom-percent").addEventListener("change", (e) => {
-  const input = e.target as HTMLInputElement;
-  if (!input.checkValidity() || !Number.isFinite(input.valueAsNumber)) {
-    input.value = String(Math.round(zoom * 10000) / 100);
-    return;
-  }
+element<HTMLFormElement>("custom-zoom").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = element<HTMLInputElement>("zoom-percent");
+  if (!input.reportValidity() || !Number.isFinite(input.valueAsNumber)) return;
   fitZoom = false;
   zoom = input.valueAsNumber / 100;
   updateZoom();
+  element<HTMLDialogElement>("zoom-dialog").close();
 });
+element("cancel-zoom").addEventListener("click", () => element<HTMLDialogElement>("zoom-dialog").close());
 window.addEventListener("resize", updateZoom);
 element<HTMLSelectElement>("middle-action").addEventListener("change", (e) => {
   middleAction = (e.target as HTMLSelectElement).value === "chord" ? "chord" : "question";
@@ -424,7 +426,14 @@ document.querySelectorAll<HTMLButtonElement>(".menu button").forEach(button => b
     const select = element<HTMLSelectElement>("difficulty"); select.value = button.dataset.difficulty; select.dispatchEvent(new Event("change"));
 
   }
-  if (button.dataset.zoom === "fit") { fitZoom = true; updateZoom(); }
+  if (button.dataset.zoom === "custom") {
+    element<HTMLInputElement>("zoom-percent").value = String(Math.round(zoom * 10000) / 100);
+    element<HTMLDialogElement>("zoom-dialog").showModal();
+  } else if (button.dataset.zoom) {
+    fitZoom = button.dataset.zoom === "fit";
+    if (!fitZoom) zoom = Number(button.dataset.zoom);
+    updateZoom();
+  }
 }));
 element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>

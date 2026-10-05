@@ -15,12 +15,12 @@ button:disabled { cursor: default; }
 .menu-bar summary::-webkit-details-marker { display: none; }
 .menu-bar details[open] summary, .menu button:hover { color: #fff; background: #000080; }
 .menu { position: absolute; z-index: 10; top: 24px; left: 0; width: 244px; padding: 3px; background: #c0c0c0; border: 2px solid; border-color: #fff #808080 #808080 #fff; box-shadow: 2px 2px #0008; }
-.menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; border: 0; padding: 5px 12px; white-space: nowrap; }
-.menu button[data-difficulty], .menu button[data-zoom] { position: relative; padding-left: 24px; }
+.menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; border: 0; padding: 5px 12px 5px 24px; position: relative; white-space: nowrap; }
 .menu button[aria-checked="true"]::before { content: "✓"; position: absolute; left: 8px; }
-.menu-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 12px; }
+.menu-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 12px 5px 24px; }
 .menu-setting select { min-width: 0; }
 #zoom-percent { width: 76px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .menu hr { border: 0; border-top: 1px solid #808080; border-bottom: 1px solid #fff; margin: 4px 2px; }
 .native-scroll { width: 100%; max-width: 100vw; overflow: auto; overscroll-behavior: contain; }
 .native-frame { margin: 0 auto; width: max-content; background: #c0c0c0; padding: calc(6px * var(--zoom)); border: calc(3px * var(--zoom)) solid; border-color: #fff #808080 #808080 #fff; }
