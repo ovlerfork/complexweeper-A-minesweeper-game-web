@@ -36,6 +36,7 @@ button:disabled { cursor: default; }
 .cell { position: relative; width: calc(16px * var(--zoom)); height: calc(16px * var(--zoom)); border: 0; padding: 0; touch-action: manipulation; }
 .play-toolbar, .copy-bar, .game-status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 0; }
 .play-toolbar { justify-content: space-between; }
+#remaining-mines { white-space: nowrap; }
 .mode { display: flex; }
 .game-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .copy-bar { border-top: 1px solid #808080; }
