@@ -116,6 +116,7 @@ function settle(): void {
 }
 let held = -1;
 let chordHeld = false;
+let chordPreview = new Set<number>();
 let leftDown = false;
 let rightDown = false;
 let middleDown = false;
@@ -125,6 +126,7 @@ let flashUntil = 0;
 function clearPress(): void {
   held = -1;
   chordHeld = false;
+  chordPreview.clear();
   leftDown = false;
   rightDown = false;
   middleDown = false;
@@ -185,8 +187,13 @@ function createBoard(): void {
       chordHeld =
         (leftDown && rightDown) || (leftDown && mode === "chord") ||
         (middleDown && middleAction === "chord");
-      if (chordHeld) consumed = false;
-      else if (e.button === 2) act(() => game.cycleFlag(i));
+      if (chordHeld) {
+        consumed = false;
+        chordPreview = new Set(game.chordTargets(i));
+      } else {
+        chordPreview.clear();
+        if (e.button === 2) act(() => game.cycleFlag(i));
+      }
       render();
     });
     cell.addEventListener("pointerup", (e) => {
@@ -201,7 +208,11 @@ function createBoard(): void {
 }
 document.addEventListener("mousemove", (e) => {
   if (!leftDown && !middleDown && !chordHeld) return;
-  held = mouseCell(e);
+  const next = mouseCell(e);
+  if (next !== held) {
+    held = next;
+    chordPreview = new Set(chordHeld && held >= 0 ? game.chordTargets(held) : []);
+  }
   render();
 });
 document.addEventListener("mouseup", (e) => {
@@ -230,12 +241,7 @@ window.addEventListener("blur", () => {
   render();
 });
 function render(): void {
-  const preview =
-    held >= 0 && chordHeld && game.open[held] && !game.over
-      ? new Set(
-          game.neighbors(held).filter((j) => !game.open[j] && !game.flag[j]),
-        )
-      : new Set<number>();
+  const preview = held >= 0 && chordHeld && !game.over ? chordPreview : new Set<number>();
   cells.forEach((cell, i) => {
     const token = game.token(i),
       isMine = token.startsWith("M"),
@@ -439,7 +445,7 @@ element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>
   dialog(
     "玩法与操作",
-    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗：空→+1→−1→+i→−i→空。左右键同时按住预览，松手展开。手机使用翻开、标旗、问号、展开模式。F2 或人脸按钮开始新一局。</p><p>中键默认标记问号，可在游戏菜单的“中键行为”中改为按住预览、松手展开邻格。问号模式点击格子可标记问号；指针停在格子上或聚焦格子后，按单引号键也可标记。新格子的颜色按蓝→蓝→紫→紫→棕→棕→绿→绿循环。</p><p>重复标记同一格按蓝→灭→紫→灭→棕→灭→绿→灭循环。重新点亮同一格后，下一个新格子仍使用该颜色，再下一个使用下一种颜色。中键设为问号标记时 Shift+中键、问号模式下 Shift 点击或 Shift+单引号可清除，保留该格下一种颜色。</p><p>格子翻开时会清除原有问号。已翻开的格子和旗帜上仍可添加问号；问号不影响扫雷规则，也不会启动计时。</p><p>展开时，旗数须等于真实雷数，实虚数量须符合真实比例或其倒数。旗的位置错误仍可能踩雷。</p><p>各类型计数是对应雷总数减去对应旗数，首次翻开后显示。工具栏的剩余雷为所有类型雷的总数减去所有旗帜数，开局即显示；每面旗计一颗雷，问号不计入。旗数超过总雷数时可显示负数。复制只包含当前可见信息。</p>",
+    "<p>雷有 +1、−1、+i、−i 四种。数字为周围八格雷之和的模长，显示为整数或最简根式。</p><p>空白周围无雷，会连片展开；0 周围有雷但互相抵消。翻开所有安全格即可获胜。首次翻开及其邻格无雷。</p><p>左键翻开；右键循环标旗：空→+1→−1→+i→−i→空。左右键同时按住预览，松手展开。手机使用翻开、标旗、问号、展开模式。F2 或人脸按钮开始新一局。</p><p>中键默认标记问号，可在游戏菜单的“中键行为”中改为按住预览、松手展开邻格。问号模式点击格子可标记问号；指针停在格子上或聚焦格子后，按单引号键也可标记。新格子的颜色按蓝→蓝→紫→紫→棕→棕→绿→绿循环。</p><p>重复标记同一格按蓝→灭→紫→灭→棕→灭→绿→灭循环。重新点亮同一格后，下一个新格子仍使用该颜色，再下一个使用下一种颜色。中键设为问号标记时 Shift+中键、问号模式下 Shift 点击或 Shift+单引号可清除，保留该格下一种颜色。</p><p>格子翻开时会清除原有问号。已翻开的格子和旗帜上仍可添加问号；问号不影响扫雷规则，也不会启动计时。</p><p>展开会结合邻格附近已翻开的数字和空白，按旗帜的正负实虚类型推理，只翻开能够确定安全的邻格。线索不足时保留未确定的格子；旗帜错误仍可能踩雷。</p><p>各类型计数是对应雷总数减去对应旗数，首次翻开后显示。工具栏的剩余雷为所有类型雷的总数减去所有旗帜数，开局即显示；每面旗计一颗雷，问号不计入。旗数超过总雷数时可显示负数。复制只包含当前可见信息。</p>",
   ),
 );
 element("about").addEventListener("click", () =>

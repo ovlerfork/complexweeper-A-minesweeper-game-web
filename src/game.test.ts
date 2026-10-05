@@ -77,52 +77,75 @@ test("flag cycle protects cells and requires manual clearing before reveal", () 
   game.reveal(0);
   assert.equal(game.started, true);
 });
-test("chord accepts swapped real/imaginary counts but wrong positions can lose", () => {
-  const game = fixture(3, 3, [
-    [0, 1],
-    [2, 2],
-    [6, 3],
-  ]);
-  game.open[4] = true;
-  game.flag[0] = 3;
-  game.flag[2] = 4;
-  game.flag[6] = 1;
-  assert.equal(game.matchCombo(4), true);
-  game.markQuestion(1);
-  game.chord(4, 2000);
-  assert.equal(game.labels[1], 0);
-  assert.equal(game.win, true);
-  assert.equal(game.elapsed, 1000);
+test("a visible cancellation permits hidden pairs and cannot authorize a chord", () => {
+  const game = fixture(3, 1, [[0, 1], [2, 2]]);
+  game.open[1] = true;
+  assert.equal(game.token(1), "0");
+  assert.deepEqual(game.chordTargets(1), []);
+  game.chord(1);
+  assert.equal(game.over, false);
+  assert.equal(game.moves, 0);
+  assert.deepEqual(game.open, [false, true, false]);
+});
+test("matching a flagged modulus cannot rule out hidden cancellation pairs", () => {
+  const alone = fixture(3, 3, [[0, 1]]);
+  const pair = fixture(3, 3, [[0, 1], [2, 3], [6, 4]]);
+  for (const game of [alone, pair]) {
+    game.open[4] = true;
+    game.flag[0] = 1;
+    assert.deepEqual(game.chordTargets(4), []);
+    game.chord(4);
+    assert.equal(game.moves, 0);
+    assert.equal(game.over, false);
+  }
+  assert.equal(alone.export("csv"), pair.export("csv"));
+});
+test("surrounding visible clues prove only a subset regardless of hidden mine signs", () => {
+  for (const type of [1, 2, 3, 4]) {
+    const game = fixture(5, 1, [[1, type]]);
+    [0, 2].forEach(i => game.open[i] = true);
+    assert.deepEqual([0, 2].map(i => game.token(i)), ["1", "1"]);
+    assert.deepEqual(game.chordTargets(2), [3]);
+    game.markQuestion(3);
+    game.chord(2, 2000);
+    assert.equal(game.open[1], false);
+    assert.equal(game.labels[3], 0);
+    assert.equal(game.win, true);
+    assert.equal(game.moves, 2);
+    assert.equal(game.elapsed, 1000);
+  }
+});
+test("signed flags constrain numeric zero and contradictions open nothing", () => {
+  const game = fixture(3, 2, [[0, 1], [2, 2], [3, 3], [4, 4]]);
+  game.open[1] = true;
+  [0, 2, 3, 4].forEach(i => game.flag[i] = game.mine[i]);
+  assert.equal(game.token(1), "0");
+  assert.deepEqual(game.chordTargets(1), [5]);
+  game.flag[2] = 1;
+  assert.deepEqual(game.chordTargets(1), []);
+  game.chord(1);
+  assert.equal(game.open[5], false);
+  assert.equal(game.moves, 0);
+});
+test("blank clues require no mines and reject conflicting flags", () => {
+  const game = fixture(3, 1, []);
+  game.open[1] = true;
+  assert.deepEqual(game.chordTargets(1), [0, 2]);
+  game.flag[0] = 1;
+  assert.deepEqual(game.chordTargets(1), []);
+});
+test("incorrect flags can still make inferred chord targets explode", () => {
+  const game = fixture(3, 1, [[2, 1]]);
+  game.open[1] = true;
+  game.flag[0] = 1;
+  assert.deepEqual(game.chordTargets(1), [2]);
+  game.markQuestion(2);
+  game.chord(1, 2000);
+  assert.equal(game.labels[2], 0);
+  assert.equal(game.over, true);
+  assert.equal(game.win, false);
+  assert.equal(game.boom, 2);
   assert.equal(game.moves, 2);
-  const wrong = fixture(3, 3, [
-    [0, 1],
-    [2, 2],
-    [6, 3],
-  ]);
-  wrong.open[4] = true;
-  wrong.flag[1] = 1;
-  wrong.flag[3] = 2;
-  wrong.flag[5] = 3;
-  wrong.markQuestion(0);
-  wrong.chord(4, 2000);
-  assert.equal(wrong.labels[0], 0);
-  assert.equal(wrong.over, true);
-  assert.equal(wrong.win, false);
-  assert.equal(wrong.boom, 0);
-  assert.equal(wrong.moves, 2);
-  const rejected = fixture(3, 3, [
-    [0, 1],
-    [2, 2],
-    [6, 3],
-  ]);
-  rejected.open[4] = true;
-  rejected.flag[0] = 1;
-  rejected.flag[2] = 1;
-  rejected.flag[6] = 1;
-  rejected.chord(4);
-  assert.equal(rejected.over, false);
-  assert.equal(rejected.moves, 0);
-  assert.equal(rejected.open.filter(Boolean).length, 1);
 });
 test("exports visible state in CSV or tab text and exposes loss mines with wrong flags", () => {
   const game = fixture(3, 3, [
