@@ -42,8 +42,7 @@ button:disabled { cursor: default; }
 .copy-bar { border-top: 1px solid #808080; }
 .copy-bar label { display: flex; align-items: center; gap: 4px; }
 .copy-bar button { padding: 4px 6px; }
-#copy-status { flex-basis: 100%; }
-#copy-status:empty { display: none; }
+#copy-status { flex-basis: 100%; width: 0; min-height: 1.5em; line-height: 1.5; overflow-wrap: anywhere; }
 input, select, textarea { background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; border-radius: 0; padding: 3px; }
 #custom { text-align: left; }
 .custom-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
