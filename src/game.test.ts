@@ -18,11 +18,13 @@ test("seeded generation protects first-click neighborhood, preserves preflags an
   const game = new Game(config, 42),
     same = new Game(config, 42);
   game.cycleFlag(80);
+  game.markQuestion(79);
   game.reveal(40, 1000);
   same.reveal(40, 1000);
   assert.deepEqual(game.mine, same.mine);
   assert.deepEqual(game.totals, [0, 4, 3, 2, 1]);
   assert.ok([40, ...game.neighbors(40)].every((i) => game.mine[i] === 0));
+  assert.equal(game.moves, 3);
   assert.equal(game.flag[80], 1);
   assert.equal(game.open[80], false);
 });
@@ -91,6 +93,7 @@ test("chord accepts swapped real/imaginary counts but wrong positions can lose",
   assert.equal(game.labels[1], 0);
   assert.equal(game.win, true);
   assert.equal(game.elapsed, 1000);
+  assert.equal(game.moves, 2);
   const wrong = fixture(3, 3, [
     [0, 1],
     [2, 2],
@@ -106,6 +109,7 @@ test("chord accepts swapped real/imaginary counts but wrong positions can lose",
   assert.equal(wrong.over, true);
   assert.equal(wrong.win, false);
   assert.equal(wrong.boom, 0);
+  assert.equal(wrong.moves, 2);
   const rejected = fixture(3, 3, [
     [0, 1],
     [2, 2],
@@ -117,6 +121,7 @@ test("chord accepts swapped real/imaginary counts but wrong positions can lose",
   rejected.flag[6] = 1;
   rejected.chord(4);
   assert.equal(rejected.over, false);
+  assert.equal(rejected.moves, 0);
   assert.equal(rejected.open.filter(Boolean).length, 1);
 });
 test("exports visible state in CSV or tab text and exposes loss mines with wrong flags", () => {
@@ -131,6 +136,7 @@ test("exports visible state in CSV or tab text and exposes loss mines with wrong
   game.markQuestion(0);
   game.reveal(0, 2000);
   assert.equal(game.labels[0], 0);
+  assert.equal(game.moves, 2);
   assert.equal(game.export("csv"), "M+1,?,XF−1\n?,√2,?\n?,?,M−i");
 });
 

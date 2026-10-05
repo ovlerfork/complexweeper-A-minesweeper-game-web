@@ -178,8 +178,8 @@ export class Game {
       this.generate(cell);
       this.started = true;
       this.startedAt = now;
-      this.moves = 0;
     }
+    this.moves++;
     if (this.mine[cell]) {
       this.open[cell] = true;
       this.labels[cell] = 0;
@@ -187,7 +187,6 @@ export class Game {
       this.finish(false, now, cell);
       return;
     }
-    this.moves++;
     this.cascade([cell]);
     this.message = "继续翻开安全格";
     this.checkWin(now);
@@ -236,6 +235,7 @@ export class Game {
       this.message = "无法展开：旗帜总数或实虚比例不符合";
       return;
     }
+    this.moves++;
     const boom = targets.find((j) => this.mine[j]);
     if (boom !== undefined) {
       this.open[boom] = true;
@@ -245,7 +245,6 @@ export class Game {
       return;
     }
     this.cascade(targets);
-    this.moves++;
     this.message = "周围安全格已展开";
     this.checkWin(now);
   }

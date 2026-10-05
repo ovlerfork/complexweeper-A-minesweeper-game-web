@@ -117,7 +117,6 @@ let middleDown = false;
 let consumed = false;
 let facePressed = false;
 let flashUntil = 0;
-let suppressMouseUntil = 0;
 function clearPress(): void {
   held = -1;
   chordHeld = false;
@@ -168,10 +167,11 @@ function createBoard(): void {
     cell.addEventListener("contextmenu", (e) => e.preventDefault());
     cell.addEventListener("auxclick", (e) => e.preventDefault());
     cell.addEventListener("pointerdown", (e) => {
-      if (e.pointerType !== "mouse") suppressMouseUntil = Date.now() + 800;
+      // Cancel compatibility mouse events; touch and pen act on pointerup.
+      if (e.pointerType !== "mouse") e.preventDefault();
     });
     cell.addEventListener("mousedown", (e) => {
-      if (!active || game.over || Date.now() < suppressMouseUntil) return;
+      if (!active || game.over) return;
       e.preventDefault();
       if (e.button === 0) leftDown = true;
       if (e.button === 2) rightDown = true;
@@ -198,7 +198,6 @@ document.addEventListener("mousemove", (e) => {
   render();
 });
 document.addEventListener("mouseup", (e) => {
-  if (Date.now() < suppressMouseUntil) return;
   const target = mouseCell(e);
   if (!consumed && target >= 0 && target === held) {
     if (chordHeld) {
@@ -320,6 +319,7 @@ function restart(config = game.config): void {
   game = new Game(config);
   active = true;
   settled = false;
+  setMode("reveal");
   clearPress();
   element("copy-status").textContent = "";
   element("manual").hidden = true;
@@ -486,15 +486,13 @@ element<HTMLFormElement>("custom").addEventListener("submit", (e) => {
   restart({ width, height, mines, counts });
   element<HTMLDialogElement>("custom-dialog").close();
 });
+function setMode(nextMode: typeof mode): void {
+  mode = nextMode;
+  for (const option of ["reveal", "flag", "question", "chord"])
+    element(`${option}-mode`).setAttribute("aria-pressed", String(option === mode));
+}
 for (const nextMode of ["reveal", "flag", "question", "chord"] as const)
-  element(`${nextMode}-mode`).addEventListener("click", () => {
-    mode = nextMode;
-    for (const option of ["reveal", "flag", "question", "chord"])
-      element(`${option}-mode`).setAttribute(
-        "aria-pressed",
-        String(option === mode),
-      );
-  });
+  element(`${nextMode}-mode`).addEventListener("click", () => setMode(nextMode));
 async function copyText(text: string, label: string): Promise<void> {
   element("manual").hidden = true;
   try {
