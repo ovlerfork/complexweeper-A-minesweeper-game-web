@@ -69,3 +69,6 @@ dialog td { text-align: right; }
 .question-2 { color: #660080; }
 .question-3 { color: #804000; }
 .question-4 { color: #005000; }
+.opened .question-label { top: 0; font-size: calc(5px * var(--zoom)); background: transparent; padding: 0; }
+
+.annotated-clue { position: absolute; left: calc(2px * var(--zoom)); bottom: 0; width: calc(12px * var(--zoom)); height: calc(12px * var(--zoom)); background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }

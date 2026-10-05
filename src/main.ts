@@ -239,6 +239,17 @@ function render(): void {
     if (preview.has(i) || (i === held && leftDown && !chordHeld && !game.open[i] && !game.flag[i])) tile = "blank";
     sprite(cell, tile);
     if (game.labels[i]) {
+      if (game.open[i]) {
+        const rect = sprites.get(tile)!;
+        sprite(cell, "blank");
+        const clue = document.createElement("span");
+        clue.className = "annotated-clue";
+        clue.style.backgroundImage = `url("${atlasUrl}")`;
+        clue.style.backgroundSize = `calc(${atlas.width * 0.75}px * var(--zoom)) calc(${atlas.height * 0.75}px * var(--zoom))`;
+        clue.style.backgroundPosition = `calc(${-rect.x * 0.75}px * var(--zoom)) calc(${-rect.y * 0.75}px * var(--zoom))`;
+        clue.setAttribute("aria-hidden", "true");
+        cell.append(clue);
+      }
       const marker = document.createElement("span");
       marker.className = `question-label question-${game.labels[i]}`;
       marker.textContent = "?";
