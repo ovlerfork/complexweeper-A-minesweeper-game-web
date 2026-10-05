@@ -1,12 +1,47 @@
 import { Game, PRESETS, TYPES, splitEvenly } from "./game";
 import "./style.css";
 import { encodeGame, decodeGame } from "./share";
+import atlas from "../素材/图集.json";
+const atlasUrl = new URL("../素材/图集.png", import.meta.url).href;
+const sprites = new Map(atlas.slots.map(slot => [slot.name, slot]));
+function sprite(target: HTMLElement, name: string): void {
+  const rect = sprites.get(name)!;
+  target.style.backgroundImage = `url("${atlasUrl}")`;
+  target.style.backgroundPosition = `calc(${-rect.x}px * var(--zoom)) calc(${-rect.y}px * var(--zoom))`;
+  target.style.backgroundSize = `calc(${atlas.width}px * var(--zoom)) calc(${atlas.height}px * var(--zoom))`;
+}
+function led(target: HTMLElement, value: number | null, imaginary = false): void {
+  const base = imaginary ? 3 : 4;
+  const digits = value === null ? base : Math.max(base, String(Math.abs(value)).length + Number(value < 0));
+  const text = value === null ? " ".repeat(digits) : (value < 0 ? "-" : "") + String(Math.abs(value)).padStart(digits - Number(value < 0), "0");
+  target.replaceChildren(...Array.from(text + (imaginary ? value === null ? " " : "i" : ""), ch => {
+    const digit = document.createElement("span");
+    digit.className = "led-digit";
+    sprite(digit, `led_${ch === " " ? "blank" : ch === "-" ? "minus" : ch}`);
+    return digit;
+  }));
+  target.setAttribute("aria-label", value === null ? "未开始" : `${value}${imaginary ? "i" : ""}`);
+}
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
-<header><div class="brand"><span class="brand-mark">√</span><div><h1>复扫雷</h1><p>Complexweeper</p></div></div><nav aria-label="游戏菜单"><button id="records">纪录</button><button id="rules">玩法</button><button id="about">关于</button><button id="exit">结束</button></nav></header>
 <section class="game" aria-label="复扫雷游戏">
-<div class="toolbar"><label class="difficulty">难度 <select id="difficulty">${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select></label><div class="game-controls"><label>缩放 <select id="zoom"><option value="1">100%</option><option value="2" selected>200%</option><option value="3">300%</option></select></label><button id="restart">↻ 新一局</button></div></div>
-<form id="custom" hidden><div class="custom-fields"><label>宽<input name="width" type="number" min="9" max="40" value="16" required></label><label>高<input name="height" type="number" min="9" max="30" value="16" required></label>${TYPES.slice(
+<nav class="menu-bar" aria-label="游戏菜单"><details><summary>游戏(G)</summary><div class="menu">
+<button id="restart">开局(N)<span>F2</span></button><hr>
+${PRESETS.map((p, i) => `<button data-difficulty="${i}">${["初级(B)", "中级(I)", "高级(E)"][i]}<span>${p.width}×${p.height} · ${p.mines} 雷</span></button>`).join("")}
+<button data-difficulty="custom">自定义(C)…</button><hr><button id="records">最高分纪录(R)…</button><hr>
+${[1,2,3].map(z => `<button data-zoom="${z}">缩放 ${z}00%</button>`).join("")}
+<hr><button id="exit">退出(X)</button></div></details><details><summary>帮助(H)</summary><div class="menu"><button id="rules">玩法与操作(H)</button><hr><button id="about">关于复扫雷(A)…</button></div></details></nav>
+<select id="difficulty" hidden>${PRESETS.map((p, i) => `<option value="${i}">${p.label}</option>`).join("")}<option value="custom">自定义</option></select><select id="zoom" hidden><option value="1">100%</option><option value="2" selected>200%</option><option value="3">300%</option></select>
+<div class="native-scroll"><div class="native-frame">
+<div class="dashboard"><div class="mine-counts">${TYPES.slice(1).map((t, i) => `<div class="counter" aria-label="${t} 剩余雷数"><span class="counter-flag" id="flag-icon-${i+1}"></span><strong id="count-${i+1}"></strong></div>`).join("")}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局"></button><div class="time"><strong id="time" aria-label="计时"></strong></div></div>
+<div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
+</div></div>
+<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
+<div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
+<div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
+<div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
+</section>
+<dialog id="custom-dialog" aria-labelledby="custom-title"><h2 id="custom-title">自定义</h2><form id="custom"><div class="custom-fields"><label>宽<input name="width" type="number" min="9" max="40" value="16" required></label><label>高<input name="height" type="number" min="9" max="30" value="16" required></label>${TYPES.slice(
   1,
 )
   .map(
@@ -15,23 +50,9 @@ app.innerHTML = `
   )
   .join(
     "",
-  )}<button id="split-counts" type="button">按合计均分</button><button type="submit">开始自定义</button></div><p id="custom-error" role="alert"></p></form>
-<div class="dashboard"><div class="mine-counts">${TYPES.slice(1)
-  .map(
-    (t, i) =>
-      `<div class="counter type-${i + 1}"><span>${t}</span><strong id="count-${i + 1}">—</strong></div>`,
-  )
-  .join(
-    "",
-  )}</div><button id="face" class="face" aria-label="开始新一局" title="开始新一局">:)</button><div class="time"><span>秒</span><strong id="time">—</strong></div></div>
-<div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
-<div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
-<div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
-<div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
-<div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
-</section>
+  )}<button id="split-counts" type="button">按合计均分</button><button type="submit">开始自定义</button></div><p id="custom-error" role="alert"></p><button id="cancel-custom" type="button">取消</button></form></dialog>
 <dialog id="info-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><div id="dialog-body"></div><form method="dialog"><button>关闭</button></form></dialog>
-<footer>复数相加，推理不止于数字。</footer>`;
+`;
 const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 let game = new Game(PRESETS[0]);
@@ -121,7 +142,8 @@ let cells: HTMLButtonElement[] = [];
 function createBoard(): void {
   const board = element<HTMLDivElement>("board");
   board.replaceChildren();
-  board.style.setProperty("--zoom", String(zoom));
+  element("app").style.setProperty("--zoom", String(zoom));
+  element("app").style.setProperty("--board-width", `${game.config.width * 16}px`);
   board.style.setProperty("--columns", String(game.config.width));
   cells = game.mine.map((_, i) => {
     const cell = document.createElement("button");
@@ -212,14 +234,10 @@ function render(): void {
     cell.className = `cell ${game.open[i] ? "opened" : ""} ${isMine ? "mine" : ""} ${isFlag ? "flag" : ""} ${token.startsWith("X") ? "wrong" : ""} ${game.boom === i ? "boom" : ""}`;
     const type = isMine ? game.mine[i] : isFlag ? game.flag[i] : 0;
     if (type) cell.classList.add(`type-${type}`);
-    cell.textContent =
-      token === "?" || token === "_"
-        ? ""
-        : isMine
-          ? `✹${TYPES[type]}`
-          : isFlag
-            ? `${token.startsWith("X") ? "×" : "⚑"}${TYPES[type]}`
-            : token;
+    cell.textContent = "";
+    let tile = token === "?" ? "closed" : token === "_" ? "blank" : token.startsWith("X") ? `wrong_${game.flag[i]}` : isFlag ? `flag_${game.flag[i]}` : isMine ? `${game.boom === i ? "boom" : "mine"}_${game.mine[i]}` : `num_${game.clue[i]}`;
+    if (preview.has(i) || (i === held && leftDown && !chordHeld && !game.open[i] && !game.flag[i])) tile = "blank";
+    sprite(cell, tile);
     const row = Math.floor(i / game.config.width) + 1,
       col = (i % game.config.width) + 1;
     cell.setAttribute(
@@ -233,11 +251,15 @@ function render(): void {
       cell.classList.add("pressed");
     cell.disabled = game.over || !active;
   });
+  let counterWidth = 72;
   TYPES.slice(1).forEach((_, i) => {
-    element(`count-${i + 1}`).textContent = game.started
-      ? String(game.totals[i + 1] - game.flag.filter((t) => t === i + 1).length)
-      : "—";
+    const type = i + 1;
+    const remaining = game.totals[type] - game.flag.filter(t => t === type).length;
+    led(element(`count-${type}`), game.started ? (type === 2 || type === 4 ? -remaining : remaining) : null, type >= 3);
+    sprite(element(`flag-icon-${type}`), `flag_${type}`);
+    counterWidth = Math.max(counterWidth, 20 + element(`count-${type}`).children.length * 13);
   });
+  element("app").style.setProperty("--counter-width", `${counterWidth}px`);
   element("status").textContent = active
     ? game.message
     : "本局已结束，点击新一局继续";
@@ -249,20 +271,13 @@ function render(): void {
   element("moves").textContent = `${game.moves} 步`;
   element("progress").textContent =
     `${game.open.filter((o, i) => o && !game.mine[i]).length} / ${game.mine.length - game.config.mines} 安全格`;
+  document.querySelectorAll<HTMLButtonElement>("[data-difficulty]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.difficulty === element<HTMLSelectElement>("difficulty").value)));
   updateTime();
   updateFace();
   settle();
 }
 function updateFace(): void {
-  element("face").textContent = facePressed
-    ? ":|"
-    : game.over
-      ? game.win
-        ? ":D"
-        : ":("
-      : held >= 0 || Date.now() < flashUntil
-        ? ":O"
-        : ":)";
+  sprite(element("face"), facePressed ? "face_down" : game.over ? game.win ? "face_win" : "face_dead" : held >= 0 || Date.now() < flashUntil ? "face_scan" : "face_normal");
 }
 function updateTime(): void {
   const seconds = Math.min(
@@ -275,9 +290,7 @@ function updateTime(): void {
         : 0) / 1000,
     ),
   );
-  element("time").textContent = game.started
-    ? String(seconds).padStart(4, "0")
-    : "—";
+  led(element("time"), game.started ? seconds : null);
 }
 function restart(config = game.config): void {
   game = new Game(config);
@@ -312,8 +325,33 @@ document.addEventListener("keydown", (e) => {
 });
 element("zoom").addEventListener("change", () => {
   zoom = Number(element<HTMLSelectElement>("zoom").value);
-  element("board").style.setProperty("--zoom", String(zoom));
+  element("app").style.setProperty("--zoom", String(zoom));
+  updateZoomMenu();
 });
+function updateZoomMenu(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach(button => button.setAttribute("aria-checked", String(Number(button.dataset.zoom) === zoom)));
+}
+updateZoomMenu();
+const menus = Array.from(document.querySelectorAll<HTMLDetailsElement>(".menu-bar details"));
+function closeMenus(): void { menus.forEach(menu => menu.open = false); }
+menus.forEach(menu => menu.addEventListener("toggle", () => { if (menu.open) menus.filter(other => other !== menu).forEach(other => other.open = false); }));
+document.addEventListener("click", e => { if (!(e.target as HTMLElement).closest(".menu-bar")) closeMenus(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeMenus();
+  if (e.altKey && (e.key.toLowerCase() === "g" || e.key.toLowerCase() === "h")) {
+    e.preventDefault();
+    const menu = menus[e.key.toLowerCase() === "g" ? 0 : 1];
+    closeMenus(); menu.open = true; menu.querySelector<HTMLButtonElement>("button")?.focus();
+  }
+});
+document.querySelectorAll<HTMLButtonElement>(".menu button").forEach(button => button.addEventListener("click", () => {
+  closeMenus();
+  if (button.dataset.difficulty) {
+    const select = element<HTMLSelectElement>("difficulty"); select.value = button.dataset.difficulty; select.dispatchEvent(new Event("change"));
+
+  }
+  if (button.dataset.zoom) { const select = element<HTMLSelectElement>("zoom"); select.value = button.dataset.zoom; select.dispatchEvent(new Event("change")); }
+}));
 element("records").addEventListener("click", () => showScores());
 element("rules").addEventListener("click", () =>
   dialog(
@@ -324,7 +362,7 @@ element("rules").addEventListener("click", () =>
 element("about").addEventListener("click", () =>
   dialog(
     "关于复扫雷",
-    '<div class="about-brand"><span class="brand-mark">√</span><strong>复扫雷 Complexweeper · 网页版</strong></div><p>基于 Microsoft® 扫雷，原版作者 Robert Donner、Curt Johnson。</p><p>原生版本及新增原生素材：青月晓。网页版以文字与 CSS 绘制盘面。</p><p>Copyright © 2026 青月晓<br>免费软件，代码采用 GPL-3.0 授权。与 Microsoft 公司无隶属关系。</p>',
+    '<div class="about-brand"><span class="brand-mark">√</span><strong>复扫雷 Complexweeper · 网页版</strong></div><p>基于 Microsoft® 扫雷，原版作者 Robert Donner、Curt Johnson。</p><p>原生版本及新增原生素材：青月晓。网页版沿用原生版图集与经典界面布局。</p><p>Copyright © 2026 青月晓<br>免费软件，代码采用 GPL-3.0 授权。与 Microsoft 公司无隶属关系。</p>',
   ),
 );
 element("exit").addEventListener("click", () => {
@@ -372,12 +410,12 @@ element("split-counts").addEventListener("click", () => {
     input.value = String(counts[i]);
   });
 });
+element("cancel-custom").addEventListener("click", () => element<HTMLDialogElement>("custom-dialog").close());
 element("custom").addEventListener("input", updateCountLimits);
 element<HTMLSelectElement>("difficulty").addEventListener("change", (e) => {
   const value = (e.target as HTMLSelectElement).value;
-  element("custom").hidden = value !== "custom";
   if (value !== "custom") restart(PRESETS[Number(value)]);
-  else prefillCustom();
+  else { prefillCustom(); element<HTMLDialogElement>("custom-dialog").showModal(); }
 });
 element<HTMLFormElement>("custom").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -406,6 +444,7 @@ element<HTMLFormElement>("custom").addEventListener("submit", (e) => {
   }
   element("custom-error").textContent = "";
   restart({ width, height, mines, counts });
+  element<HTMLDialogElement>("custom-dialog").close();
 });
 for (const nextMode of ["reveal", "flag", "chord"] as const)
   element(`${nextMode}-mode`).addEventListener("click", () => {
@@ -461,7 +500,7 @@ function loadSharedGame(): void {
     const preset = game.config.counts ? -1 : PRESETS.findIndex(p =>
       p.width === game.config.width && p.height === game.config.height && p.mines === game.config.mines);
     element<HTMLSelectElement>("difficulty").value = preset < 0 ? "custom" : String(preset);
-    element("custom").hidden = preset >= 0;
+
     if (preset < 0) prefillCustom();
     element("copy-status").textContent = "分享对局已载入";
   } catch (error) {
