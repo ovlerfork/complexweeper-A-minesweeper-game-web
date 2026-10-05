@@ -1,0 +1,431 @@
+:root {
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: #eaf1eb;
+  background: #14251f;
+  font-synthesis: none;
+  font-weight: 400;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+select {
+  cursor: pointer;
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+summary:focus-visible,
+.board-scroll:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #f0c969;
+  outline-offset: 3px;
+}
+button {
+  color: inherit;
+  border: 1px solid #4c6356;
+  background: #2b4135;
+  border-radius: 5px;
+  padding: 9px 14px;
+}
+button:hover {
+  background: #385441;
+}
+button:disabled {
+  cursor: default;
+}
+select,
+input {
+  border: 1px solid #556b5c;
+  border-radius: 4px;
+  background: #1e3227;
+  color: #f3f6f2;
+  padding: 9px;
+}
+#app {
+  max-width: 1100px;
+  margin: auto;
+  padding: 34px 28px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.brand {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+}
+.brand-mark {
+  font-family: Georgia, serif;
+  font-size: 45px;
+  color: #e8c86e;
+}
+h1 {
+  font-size: 27px;
+  margin: 0;
+  font-weight: 700;
+}
+.brand p {
+  color: #9eb3a2;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.tagline {
+  color: #adc0b0;
+  font-size: 14px;
+}
+.game {
+  background: #1b3025;
+  border: 1px solid #3b5243;
+  padding: 20px;
+  border-radius: 6px;
+}
+.toolbar,
+.dashboard,
+.play-toolbar,
+.game-status,
+.copy-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.toolbar {
+  padding-bottom: 18px;
+  border-bottom: 1px solid #3b5243;
+}
+.difficulty,
+.copy-bar label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #b9c9bc;
+  font-size: 14px;
+}
+.dashboard {
+  padding: 22px 0;
+}
+.mine-counts {
+  display: flex;
+  gap: 28px;
+}
+.counter {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.counter span {
+  font-weight: 600;
+  font-size: 15px;
+}
+.counter strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: #f2f4eb;
+  min-width: 25px;
+}
+.time {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.time span {
+  color: #a7bda9;
+  font-size: 13px;
+}
+.time strong {
+  font:
+    25px ui-monospace,
+    monospace;
+  color: #e9ca7c;
+}
+.type-1 {
+  color: #8ed0b2;
+}
+.type-2 {
+  color: #f5a69c;
+}
+.type-3 {
+  color: #91c5ef;
+}
+.type-4 {
+  color: #cfb2f3;
+}
+.play-toolbar {
+  padding-bottom: 14px;
+  font-size: 13px;
+  color: #a9c0af;
+}
+.mode {
+  display: flex;
+  gap: 0;
+}
+.mode button {
+  font-size: 13px;
+  border-radius: 0;
+  padding: 7px 14px;
+}
+.mode button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.mode button:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: 0;
+}
+.mode [aria-pressed="true"] {
+  color: #192c21;
+  background: #e9c96e;
+  border-color: #e9c96e;
+  font-weight: 600;
+}
+.board-scroll {
+  overflow: auto;
+  max-width: 100%;
+  padding: 4px;
+  background: #102019;
+  border: 1px solid #4c6356;
+  overscroll-behavior-x: contain;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 34px);
+  gap: 2px;
+  width: max-content;
+  margin: auto;
+}
+.cell {
+  width: 34px;
+  height: 34px;
+  border-radius: 2px;
+  padding: 0;
+  border: 1px solid #597260;
+  border-top-color: #799581;
+  border-left-color: #799581;
+  background: #365540;
+  box-shadow: inset 0 -2px #294331;
+  color: #e5d384;
+  font-family: "Segoe UI", sans-serif;
+  font-weight: 650;
+  font-size: 13px;
+  touch-action: manipulation;
+  line-height: 1;
+}
+.cell:hover:not(:disabled) {
+  background: #506f56;
+}
+.cell.opened {
+  background: #20372a;
+  border: 1px solid #2e4736;
+  box-shadow: none;
+}
+.cell.flag {
+  font-size: 11px;
+}
+.cell.type-1 {
+  color: #8ed0b2;
+}
+.cell.type-2 {
+  color: #f5a69c;
+}
+.cell.type-3 {
+  color: #91c5ef;
+}
+.cell.type-4 {
+  color: #cfb2f3;
+}
+.cell.mine {
+  background: #392d2b;
+  font-size: 11px;
+}
+.cell.boom {
+  background: #a34037;
+  color: white;
+}
+.cell.wrong {
+  background: #51382f;
+}
+.game-status {
+  padding: 16px 0;
+  color: #b5c8b8;
+  font-size: 13px;
+  min-height: 52px;
+}
+.game-status #moves {
+  white-space: nowrap;
+  color: #8ca992;
+}
+.win-text {
+  color: #a1dfb9;
+}
+.loss-text {
+  color: #f5a69c;
+}
+.copy-bar {
+  border-top: 1px solid #3b5243;
+  padding-top: 17px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.copy-bar #copy-status {
+  font-size: 12px;
+  color: #b7cbb9;
+}
+.copy-bar button {
+  font-size: 14px;
+}
+#manual {
+  margin-top: 15px;
+  font-size: 13px;
+}
+#manual label {
+  display: block;
+  margin-bottom: 8px;
+}
+textarea {
+  width: 100%;
+  height: 180px;
+  background: #102019;
+  color: #eaf1eb;
+  border: 1px solid #597260;
+  padding: 10px;
+  font-family: monospace;
+  white-space: pre;
+  resize: vertical;
+}
+#select-copy {
+  margin-top: 8px;
+}
+.rules {
+  margin: 20px 0;
+  color: #a5bdaa;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.rules summary {
+  cursor: pointer;
+  color: #d5e0d6;
+}
+.rules p {
+  max-width: 850px;
+}
+footer {
+  font-size: 12px;
+  color: #77947f;
+  padding: 12px 0;
+}
+#custom {
+  padding: 15px 0;
+  border-bottom: 1px solid #3b5243;
+}
+.custom-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.custom-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.custom-fields input {
+  width: 80px;
+}
+#custom-error {
+  color: #f5a69c;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  #app {
+    padding: 22px 12px;
+  }
+  header {
+    margin-bottom: 19px;
+  }
+  .tagline {
+    display: none;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  .game {
+    padding: 12px;
+  }
+  .toolbar {
+    gap: 8px;
+  }
+  .difficulty {
+    gap: 7px;
+  }
+  .difficulty select {
+    font-size: 12px;
+    max-width: 195px;
+    padding: 8px 5px;
+  }
+  #restart {
+    font-size: 12px;
+    padding: 9px;
+  }
+  .dashboard {
+    padding: 17px 0;
+    gap: 8px;
+  }
+  .mine-counts {
+    gap: 12px;
+  }
+  .counter {
+    gap: 4px;
+  }
+  .counter span {
+    font-size: 12px;
+  }
+  .counter strong {
+    font-size: 18px;
+    min-width: 18px;
+  }
+  .time {
+    gap: 6px;
+  }
+  .time strong {
+    font-size: 19px;
+  }
+  .time span {
+    display: none;
+  }
+  .copy-bar {
+    gap: 10px;
+  }
+  .copy-bar label {
+    gap: 7px;
+    font-size: 12px;
+  }
+  .copy-bar select {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .copy-bar button {
+    padding: 9px;
+    font-size: 12px;
+  }
+  .game-status {
+    gap: 8px;
+    font-size: 12px;
+  }
+}
