@@ -283,7 +283,7 @@ function render(): void {
   TYPES.slice(1).forEach((_, i) => {
     const type = i + 1;
     const remaining = game.totals[type] - game.flag.filter(t => t === type).length;
-    led(element(`count-${type}`), game.started ? (type === 2 || type === 4 ? -remaining : remaining) : null, type >= 3);
+    led(element(`count-${type}`), game.started ? remaining : null, type >= 3);
     sprite(element(`flag-icon-${type}`), `flag_${type}`);
     counterWidth = Math.max(counterWidth, 20 + element(`count-${type}`).children.length * 13);
   });
