@@ -1,5 +1,6 @@
 import { Game, PRESETS, TYPES, splitEvenly } from "./game";
 import "./style.css";
+import { encodeGame, decodeGame } from "./share";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
 <header><div class="brand"><span class="brand-mark">√</span><div><h1>复扫雷</h1><p>Complexweeper</p></div></div><nav aria-label="游戏菜单"><button id="records">纪录</button><button id="rules">玩法</button><button id="about">关于</button><button id="exit">结束</button></nav></header>
@@ -26,8 +27,8 @@ app.innerHTML = `
 <div class="play-toolbar"><div class="mode" role="group" aria-label="点击操作"><button id="reveal-mode" aria-pressed="true">翻开</button><button id="flag-mode" aria-pressed="false">⚑ 标旗</button><button id="chord-mode" aria-pressed="false">展开</button></div><span id="progress">0 / 71 安全格</span></div>
 <div class="board-scroll" tabindex="0" aria-label="盘面滚动区域"><div id="board" class="board" role="group" aria-label="扫雷盘面"></div></div>
 <div class="game-status"><span id="status" role="status">点击任意格子开始</span><span id="moves">0 步</span></div>
-<div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><span id="copy-status" role="status"></span></div>
-<div id="manual" hidden><label for="copy-text">请选中下方盘面并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选盘面</button></div>
+<div class="copy-bar"><label>盘面格式 <select id="format"><option value="csv">CSV</option><option value="text">纯文本（制表符）</option></select></label><button id="copy">⧉ 复制盘面</button><button id="share">↗ 分享对局</button><span id="copy-status" role="status"></span></div>
+<div id="manual" hidden><label id="manual-label" for="copy-text">请选中下方文本并手动复制</label><textarea id="copy-text" readonly spellcheck="false"></textarea><button id="select-copy">全选文本</button></div>
 </section>
 <dialog id="info-dialog" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><div id="dialog-body"></div><form method="dialog"><button>关闭</button></form></dialog>
 <footer>复数相加，推理不止于数字。</footer>`;
@@ -285,6 +286,7 @@ function restart(config = game.config): void {
   clearPress();
   element("copy-status").textContent = "";
   element("manual").hidden = true;
+  history.replaceState(null, "", location.pathname + location.search);
   createBoard();
 }
 element("restart").addEventListener("click", () => restart());
@@ -400,23 +402,30 @@ for (const nextMode of ["reveal", "flag", "chord"] as const)
         String(option === mode),
       );
   });
-element("copy").addEventListener("click", async () => {
-  const format = element<HTMLSelectElement>("format").value as "csv" | "text",
-    text = game.export(format);
+async function copyText(text: string, label: string): Promise<void> {
   element("manual").hidden = true;
   try {
-    if (!navigator.clipboard?.writeText)
-      throw new Error("Clipboard unavailable");
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
     await navigator.clipboard.writeText(text);
-    element("copy-status").textContent = "盘面已复制";
+    element("copy-status").textContent = `${label}已复制`;
   } catch {
     element("copy-status").textContent = "自动复制不可用，请手动复制";
+    element("manual-label").textContent = `请选中下方${label}并手动复制`;
     element("manual").hidden = false;
     const textarea = element<HTMLTextAreaElement>("copy-text");
     textarea.value = text;
     textarea.focus();
     textarea.select();
   }
+}
+element("copy").addEventListener("click", () => {
+  const format = element<HTMLSelectElement>("format").value as "csv" | "text";
+  void copyText(game.export(format), "盘面");
+});
+element("share").addEventListener("click", () => {
+  const url = new URL(location.href);
+  url.hash = `game=${encodeGame(game, active)}`;
+  void copyText(url.href, "对局链接");
 });
 element("select-copy").addEventListener("click", () => {
   const textarea = element<HTMLTextAreaElement>("copy-text");
@@ -427,4 +436,27 @@ setInterval(() => {
   updateTime();
   updateFace();
 }, 100);
+function loadSharedGame(): void {
+  if (!location.hash.startsWith("#game=")) return;
+  try {
+    const restored = decodeGame(location.hash.slice(6));
+    game = restored.game;
+    active = restored.active;
+    settled = game.over;
+    clearPress();
+    const preset = game.config.counts ? -1 : PRESETS.findIndex(p =>
+      p.width === game.config.width && p.height === game.config.height && p.mines === game.config.mines);
+    element<HTMLSelectElement>("difficulty").value = preset < 0 ? "custom" : String(preset);
+    element("custom").hidden = preset >= 0;
+    if (preset < 0) prefillCustom();
+    element("copy-status").textContent = "分享对局已载入";
+  } catch (error) {
+    element("copy-status").textContent = error instanceof Error ? error.message : "无法载入分享对局";
+  }
+}
+window.addEventListener("hashchange", () => {
+  loadSharedGame();
+  createBoard();
+});
+loadSharedGame();
 createBoard();

@@ -249,3 +249,67 @@ test("native custom prefill splits remainder into the earliest types", () => {
   assert.deepEqual(splitEvenly(10), [3, 3, 2, 2]);
   assert.deepEqual(splitEvenly(99), [25, 25, 25, 24]);
 });
+
+import { encodeGame, decodeGame } from "./share";
+test("shared pending game retains preflags and produces identical future board", () => {
+  const original = new Game({ width: 9, height: 9, mines: 10 }, 0);
+  original.cycleFlag(80);
+  original.cycleFlag(80);
+  const restored = decodeGame(encodeGame(original, true, 1000), 2000).game;
+  assert.equal(restored.seed, 1);
+  assert.equal(restored.moves, 2);
+  assert.deepEqual(restored.flag, original.flag);
+  original.reveal(40, 3000);
+  restored.reveal(40, 3000);
+  assert.deepEqual(restored.mine, original.mine);
+  assert.equal(restored.export("csv"), original.export("csv"));
+});
+test("shared random and custom games preserve revealed board and future play", () => {
+  for (const counts of [undefined, [4, 3, 2, 1]]) {
+    const original = new Game({ width: 9, height: 9, mines: 10, counts }, 42);
+    original.cycleFlag(80);
+    original.reveal(40, 1000);
+    const restored = decodeGame(encodeGame(original, true, 1500), 2000).game;
+    assert.deepEqual(restored.mine, original.mine);
+    assert.deepEqual(restored.open, original.open);
+    assert.deepEqual(restored.flag, original.flag);
+    assert.equal(restored.moves, original.moves);
+    assert.equal(restored.startedAt, 1500);
+    const next = original.mine.findIndex((t, i) => !t && !original.open[i] && !original.flag[i]);
+    original.reveal(next, 2200);
+    restored.reveal(next, 2700);
+    assert.equal(restored.export("csv"), original.export("csv"));
+    assert.equal(restored.moves, original.moves);
+  }
+});
+test("shared loss, win and stopped games retain outcome and visible tokens", () => {
+  for (const outcome of ["loss", "win", "stopped"]) {
+    const original = new Game({ width: 9, height: 9, mines: 10 }, 987);
+    original.reveal(40, 1000);
+    if (outcome === "loss") original.reveal(original.mine.findIndex(Boolean), 1500);
+    if (outcome === "win") original.mine.forEach((t, i) => { if (!t) original.reveal(i, 1500); });
+    if (outcome === "stopped") original.elapsed = 500;
+    const restored = decodeGame(encodeGame(original, outcome !== "stopped", 1500), 2000);
+    assert.equal(restored.active, outcome !== "stopped");
+    assert.equal(restored.game.export("csv"), original.export("csv"));
+    assert.equal(restored.game.over, original.over);
+    assert.equal(restored.game.win, original.win);
+    assert.equal(restored.game.boom, original.boom);
+    assert.equal(restored.game.elapsed, 500);
+  }
+});
+test("share rejects malformed, unsupported and inconsistent revealed state", () => {
+  const game = new Game({ width: 9, height: 9, mines: 10 }, 42);
+  game.reveal(40, 1000);
+  const encoded = encodeGame(game, true, 1500);
+  type Snapshot = [number, number, [number, number, number, number[] | null], number, number, number, number, number, number, number[][], number[][]];
+  const mutate = (change: (data: Snapshot) => void) => {
+    const data = JSON.parse(atob(encoded.replaceAll("-", "+").replaceAll("_", "/")));
+    change(data);
+    return btoa(JSON.stringify(data)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  };
+  for (const bad of ["!", "a".repeat(40001), mutate(d => d[0] = 2),
+    mutate(d => d[2][0] = 999), mutate(d => d[9][0][1] = 999),
+    mutate(d => d[10] = [[d[9][0][0], 1]]), mutate(d => d[7] = 1)])
+    assert.throws(() => decodeGame(bad), /分享链接/);
+});

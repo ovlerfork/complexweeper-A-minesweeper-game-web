@@ -56,6 +56,7 @@ export class Game {
   open: boolean[];
   flag: number[];
   totals = [0, 0, 0, 0, 0];
+  firstClick = -1;
   started = false;
   over = false;
   win = false;
@@ -106,6 +107,7 @@ export class Game {
     }
   }
   generate(cell: number): void {
+    this.firstClick = cell;
     const safe = new Set([cell, ...this.neighbors(cell)]);
     const pool = this.mine.map((_, i) => i).filter((i) => !safe.has(i));
     this.shuffle(pool);
