@@ -206,6 +206,7 @@ export class Game {
       if (clear) return;
       if (this.nextLabel[cell]) {
         this.labels[cell] = this.nextLabel[cell];
+        this.labelPhase = (this.labels[cell] - 1) * 2 + 1;
       } else {
         this.labels[cell] = Math.floor(this.labelPhase / 2) + 1;
         this.labelPhase = (this.labelPhase + 1) % 8;

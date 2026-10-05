@@ -335,20 +335,31 @@ test("question labels pair new cells and toggle each cell off between colors", (
   const game = new Game({ width: 9, height: 9, mines: 10 }, 42);
   [0, 1, 2, 3, 4, 5, 6, 7, 8].forEach(i => game.markQuestion(i));
   assert.deepEqual(game.labels.slice(0, 9), [1, 1, 2, 2, 3, 3, 4, 4, 1]);
-  for (const color of [0, 2, 0, 3, 0, 4, 0, 1]) {
+  let freshCell = 9;
+  for (const color of [2, 3, 4, 1]) {
+    const phase = game.labelPhase;
+    game.markQuestion(0);
+    assert.equal(game.labels[0], 0);
+    assert.equal(game.labelPhase, phase);
     game.markQuestion(0);
     assert.equal(game.labels[0], color);
-    assert.equal(game.labelPhase, 1);
+    game.markQuestion(freshCell);
+    game.markQuestion(freshCell + 1);
+    assert.deepEqual(game.labels.slice(freshCell, freshCell + 2), [color, color % 4 + 1]);
+    freshCell += 2;
   }
+  const phase = game.labelPhase;
   game.markQuestion(0, true);
   assert.equal(game.labels[0], 0);
   game.markQuestion(0, true);
+  assert.equal(game.labelPhase, phase);
   game.markQuestion(0);
   assert.equal(game.labels[0], 2);
-  game.markQuestion(9);
-  assert.equal(game.labels[9], 1);
+  game.markQuestion(freshCell);
+  game.markQuestion(freshCell + 1);
+  assert.deepEqual(game.labels.slice(freshCell, freshCell + 2), [2, 3]);
   assert.equal(game.started, false);
-  assert.equal(game.moves, 20);
+  assert.equal(game.moves, 29);
 });
 
 test("shared question labels retain colors and future pair phase, while v1 remains playable", () => {
