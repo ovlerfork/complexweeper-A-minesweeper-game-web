@@ -217,95 +217,26 @@ export class Game {
   }
   chordTargets(cell: number): number[] {
     if (this.over || !this.open[cell] || this.clue[cell] < 0) return [];
-    const targets = this.neighbors(cell).filter(j => !this.open[j] && !this.flag[j]);
+    const neighbors = this.neighbors(cell);
+    const targets = neighbors.filter(j => !this.open[j] && !this.flag[j]);
     if (!targets.length) return [];
-    const visible = new Set<number>([cell]);
-    targets.forEach(j => this.neighbors(j).forEach(k => {
-      if (this.open[k] && this.clue[k] >= 0) visible.add(k);
-    }));
-    const variables = new Set<number>();
-    const constraints = [...visible].map(j => {
-      let a = 0, b = 0, mines = 0;
-      const unknown: number[] = [];
-      this.neighbors(j).forEach(k => {
-        if (this.open[k]) return;
-        if (this.flag[k]) {
-          a += vectors[this.flag[k]][0];
-          b += vectors[this.flag[k]][1];
-          mines++;
-        } else {
-          unknown.push(k);
-          variables.add(k);
-        }
-      });
-      const blank = this.isBlank(j);
-      const sums: number[][] = [];
-      if (!blank)
-        for (let x = -8; x <= 8; x++)
-          for (let y = -8; y <= 8; y++)
-            if (x * x + y * y === this.clue[j]) sums.push([x, y]);
-      return { unknown, a, b, mines, blank, sums, remaining: unknown.length };
+    let minesReal = 0, minesImag = 0, flagsReal = 0, flagsImag = 0;
+    neighbors.forEach(j => {
+      if (this.mine[j] === 1 || this.mine[j] === 2) minesReal++;
+      else if (this.mine[j]) minesImag++;
+      if (this.flag[j] === 1 || this.flag[j] === 2) flagsReal++;
+      else if (this.flag[j]) flagsImag++;
     });
-    const forcedSafe = new Set(constraints.filter(c => c.blank).flatMap(c => c.unknown));
-    const ordered = [...variables].sort((a, b) =>
-      constraints.filter(c => c.unknown.includes(b)).length -
-      constraints.filter(c => c.unknown.includes(a)).length);
-    const touching = ordered.map(j => constraints.filter(c => c.unknown.includes(j)));
-    // All searches share a work limit. An unfinished search cannot prove safety.
-    let work = 200_000;
-    const feasible = (c: typeof constraints[number]): boolean | null => {
-      if (--work < 0) return null;
-      if (c.blank) return c.mines === 0;
-      for (const [a, b] of c.sums) {
-        if (--work < 0) return null;
-        // Each remaining cell supplies zero or a unit vector. Numeric zero
-        // also needs a mine, so an empty sum requires an existing mine or a pair.
-        const distance = Math.abs(a - c.a) + Math.abs(b - c.b);
-        if (distance <= c.remaining &&
-          (c.mines > 0 || distance > 0 || c.remaining >= 2)) return true;
-      }
-      return false;
-    };
-    const satisfiable = (mustBeMine = -1): boolean | null => {
-      for (const c of constraints) {
-        const possible = feasible(c);
-        if (possible !== true) return possible;
-      }
-      const search = (index: number): boolean | null => {
-        if (--work < 0) return null;
-        if (index === ordered.length) return true;
-        const j = ordered[index];
-        const types = forcedSafe.has(j) ? [0] : j === mustBeMine ? [1, 2, 3, 4] : [0, 1, 2, 3, 4];
-        if (forcedSafe.has(j) && j === mustBeMine) return false;
-        for (const type of types) {
-          const [a, b] = vectors[type];
-          const affected = touching[index];
-          affected.forEach(c => {
-            c.a += a; c.b += b; c.mines += Number(type !== 0); c.remaining--;
-          });
-          let possible: boolean | null = true;
-          for (const c of affected) {
-            possible = feasible(c);
-            if (possible !== true) break;
-          }
-          const result = possible === true ? search(index + 1) : possible;
-          affected.forEach(c => {
-            c.a -= a; c.b -= b; c.mines -= Number(type !== 0); c.remaining++;
-          });
-          if (result !== false) return result;
-        }
-        return false;
-      };
-      return search(0);
-    };
-    if (satisfiable() !== true) return [];
-    return targets.filter(j => satisfiable(j) === false);
+    const matches = flagsReal + flagsImag === minesReal + minesImag &&
+      ((flagsReal === minesReal && flagsImag === minesImag) ||
+        (flagsReal === minesImag && flagsImag === minesReal));
+    return matches ? targets : [];
   }
   chord(cell: number, now = Date.now()): void {
     if (this.over || !this.open[cell] || this.mine[cell]) return;
     const targets = this.chordTargets(cell);
     if (!targets.length) {
-      this.message = "无法展开：可见线索未能确定邻格安全，请检查旗帜";
+      this.message = "无法展开：旗帜数量或实虚比例不符合，请检查旗帜";
       return;
     }
     this.moves++;

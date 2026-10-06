@@ -77,75 +77,57 @@ test("flag cycle protects cells and requires manual clearing before reveal", () 
   game.reveal(0);
   assert.equal(game.started, true);
 });
-test("a visible cancellation permits hidden pairs and cannot authorize a chord", () => {
-  const game = fixture(3, 1, [[0, 1], [2, 2]]);
-  game.open[1] = true;
-  assert.equal(game.token(1), "0");
-  assert.deepEqual(game.chordTargets(1), []);
-  game.chord(1);
-  assert.equal(game.over, false);
-  assert.equal(game.moves, 0);
-  assert.deepEqual(game.open, [false, true, false]);
+test("a numbered cell without enough flags cannot expand its neighbors", () => {
+  const game = new Game({ width: 30, height: 16, mines: 99 }, 2509811269);
+  game.reveal(187, 1000);
+  game.reveal(221, 1100);
+  game.reveal(250, 1200);
+  game.cycleFlag(220);
+  game.markQuestion(248);
+  assert.equal(game.clue[248], 1);
+  assert.equal(game.clue[278], 4);
+  const opened = game.open.slice();
+  const moves = game.moves;
+  game.chord(248, 2000);
+  assert.deepEqual(game.open, opened);
+  assert.equal(game.moves, moves);
 });
-test("matching a flagged modulus cannot rule out hidden cancellation pairs", () => {
-  const alone = fixture(3, 3, [[0, 1]]);
-  const pair = fixture(3, 3, [[0, 1], [2, 3], [6, 4]]);
-  for (const game of [alone, pair]) {
+test("chording accepts matching or swapped real and imaginary counts regardless of signs", () => {
+  for (const { flags, matches } of [
+    { flags: [2, 2, 4], matches: true },
+    { flags: [3, 4, 1], matches: true },
+    { flags: [1, 1, 1], matches: false },
+    { flags: [1, 2, 0], matches: false },
+  ]) {
+    const game = fixture(3, 3, [[0, 1], [2, 2], [6, 3]]);
     game.open[4] = true;
-    game.flag[0] = 1;
-    assert.deepEqual(game.chordTargets(4), []);
-    game.chord(4);
-    assert.equal(game.moves, 0);
-    assert.equal(game.over, false);
-  }
-  assert.equal(alone.export("csv"), pair.export("csv"));
-});
-test("surrounding visible clues prove only a subset regardless of hidden mine signs", () => {
-  for (const type of [1, 2, 3, 4]) {
-    const game = fixture(5, 1, [[1, type]]);
-    [0, 2].forEach(i => game.open[i] = true);
-    assert.deepEqual([0, 2].map(i => game.token(i)), ["1", "1"]);
-    assert.deepEqual(game.chordTargets(2), [3]);
-    game.markQuestion(3);
-    game.chord(2, 2000);
-    assert.equal(game.open[1], false);
-    assert.equal(game.labels[3], 0);
-    assert.equal(game.win, true);
-    assert.equal(game.moves, 2);
-    assert.equal(game.elapsed, 1000);
+    [0, 2, 6].forEach((i, j) => game.flag[i] = flags[j]);
+    game.chord(4, 2000);
+    assert.equal(game.win, matches);
+    assert.equal(game.moves, matches ? 1 : 0);
+    assert.equal(game.open[8], matches);
   }
 });
-test("signed flags constrain numeric zero and contradictions open nothing", () => {
-  const game = fixture(3, 2, [[0, 1], [2, 2], [3, 3], [4, 4]]);
-  game.open[1] = true;
-  [0, 2, 3, 4].forEach(i => game.flag[i] = game.mine[i]);
-  assert.equal(game.token(1), "0");
-  assert.deepEqual(game.chordTargets(1), [5]);
-  game.flag[2] = 1;
-  assert.deepEqual(game.chordTargets(1), []);
-  game.chord(1);
-  assert.equal(game.open[5], false);
-  assert.equal(game.moves, 0);
+test("a misplaced flag with swapped real and imaginary counts allows an explosion", () => {
+  const game = new Game({ width: 30, height: 16, mines: 99 }, 1467040843);
+  game.reveal(224, 1000);
+  game.cycleFlag(346);
+  game.markQuestion(317);
+  assert.equal(game.mine[346], 0);
+  assert.equal(game.mine[347], 4);
+  game.chord(317, 2000);
+  assert.equal(game.over, true);
+  assert.equal(game.win, false);
+  assert.equal(game.boom, 347);
+  assert.equal(game.open[347], true);
+  assert.equal(game.moves, 4);
 });
-test("blank clues require no mines and reject conflicting flags", () => {
+test("blank clues expand only when no neighboring flags are present", () => {
   const game = fixture(3, 1, []);
   game.open[1] = true;
   assert.deepEqual(game.chordTargets(1), [0, 2]);
   game.flag[0] = 1;
   assert.deepEqual(game.chordTargets(1), []);
-});
-test("incorrect flags can still make inferred chord targets explode", () => {
-  const game = fixture(3, 1, [[2, 1]]);
-  game.open[1] = true;
-  game.flag[0] = 1;
-  assert.deepEqual(game.chordTargets(1), [2]);
-  game.markQuestion(2);
-  game.chord(1, 2000);
-  assert.equal(game.labels[2], 0);
-  assert.equal(game.over, true);
-  assert.equal(game.win, false);
-  assert.equal(game.boom, 2);
-  assert.equal(game.moves, 2);
 });
 test("exports visible state in CSV or tab text and exposes loss mines with wrong flags", () => {
   const game = fixture(3, 3, [
